@@ -119,7 +119,9 @@ export function ServicePageShell({
     internalPort: 8080,
     databasePublicEnabled: true,
     databasePublicHostname: "",
-    postgresLogicalReplicationEnabled: false
+    postgresLogicalReplicationEnabled: false,
+    buildMethod: "railpack" as "railpack" | "dockerfile",
+    dockerfilePath: "Dockerfile"
   });
   const [settingsBranches, setSettingsBranches] = useState<string[]>([]);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
@@ -173,7 +175,9 @@ export function ServicePageShell({
           internalPort: result.service.internalPort,
           databasePublicEnabled: result.service.databasePublicEnabled,
           databasePublicHostname: result.service.databasePublicHostname ?? "",
-          postgresLogicalReplicationEnabled: result.service.postgresLogicalReplicationEnabled
+          postgresLogicalReplicationEnabled: result.service.postgresLogicalReplicationEnabled,
+          buildMethod: result.service.buildMethod ?? "railpack",
+          dockerfilePath: result.service.dockerfilePath ?? "Dockerfile"
         });
         setError("");
         setOverviewLoading(false);
@@ -421,7 +425,9 @@ export function ServicePageShell({
         internalPort: Number(settings.internalPort),
         databasePublicEnabled: isDatabase ? true : undefined,
         databasePublicHostname: isDatabase ? settings.databasePublicHostname || undefined : undefined,
-        postgresLogicalReplicationEnabled: isDatabase ? settings.postgresLogicalReplicationEnabled : undefined
+        postgresLogicalReplicationEnabled: isDatabase ? settings.postgresLogicalReplicationEnabled : undefined,
+        buildMethod: isDatabase || isDockerImage ? undefined : settings.buildMethod,
+        dockerfilePath: isDatabase || isDockerImage ? undefined : (settings.buildMethod === "dockerfile" ? (settings.dockerfilePath.trim() || "Dockerfile") : undefined)
       });
     });
   }
@@ -806,6 +812,57 @@ export function ServicePageShell({
                             <FormInput value={settings.staticOutput} onChange={(event) => setSettings({ ...settings, staticOutput: event.target.value })} placeholder="auto" />
                           </div>
                         ) : null}
+
+                        {/* Build Method */}
+                        <div className="xl:col-span-2">
+                          <FieldLabel>Build method</FieldLabel>
+                          <div className="space-y-3 border border-zinc-700 bg-zinc-900/88 p-4">
+                            <div className="flex gap-3">
+                              <button
+                                type="button"
+                                id="build-method-railpack"
+                                onClick={() => setSettings((s) => ({ ...s, buildMethod: "railpack" }))}
+                                className={`flex-1 border px-4 py-3 text-left text-sm transition ${
+                                  settings.buildMethod === "railpack"
+                                    ? "border-[#4FB8B2]/60 bg-[#4FB8B2]/10 text-[#7fe3dd]"
+                                    : "border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
+                                }`}
+                              >
+                                <div className="font-semibold">Railpack (default)</div>
+                                <div className="mt-1 text-xs opacity-70">Auto-detects language and framework. No Dockerfile needed.</div>
+                              </button>
+                              <button
+                                type="button"
+                                id="build-method-dockerfile"
+                                onClick={() => setSettings((s) => ({ ...s, buildMethod: "dockerfile" }))}
+                                className={`flex-1 border px-4 py-3 text-left text-sm transition ${
+                                  settings.buildMethod === "dockerfile"
+                                    ? "border-[#4FB8B2]/60 bg-[#4FB8B2]/10 text-[#7fe3dd]"
+                                    : "border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
+                                }`}
+                              >
+                                <div className="font-semibold">Dockerfile</div>
+                                <div className="mt-1 text-xs opacity-70">Uses your Dockerfile via <code className="font-mono">docker build</code>. Bypasses Railpack.</div>
+                              </button>
+                            </div>
+                            {settings.buildMethod === "dockerfile" ? (
+                              <div>
+                                <div className="mb-1.5 text-xs text-zinc-400">Dockerfile path (relative to root directory)</div>
+                                <FormInput
+                                  id="dockerfile-path"
+                                  value={settings.dockerfilePath}
+                                  onChange={(event) => setSettings({ ...settings, dockerfilePath: event.target.value })}
+                                  placeholder="Dockerfile"
+                                />
+                              </div>
+                            ) : null}
+                            {settings.buildMethod === "railpack" ? (
+                              <p className="text-xs text-zinc-500">
+                                Aeroplane will automatically switch to Dockerfile mode if a <code className="font-mono text-zinc-400">Dockerfile</code> is detected in the repo at deploy time.
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
                       </>
                     )}
                   </div>

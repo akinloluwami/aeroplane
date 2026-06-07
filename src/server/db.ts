@@ -217,6 +217,14 @@ if (!hasColumn("projects", "postgres_logical_replication_enabled")) {
   sqlite.exec("ALTER TABLE projects ADD COLUMN postgres_logical_replication_enabled INTEGER NOT NULL DEFAULT 0");
 }
 
+if (!hasColumn("projects", "build_method")) {
+  sqlite.exec("ALTER TABLE projects ADD COLUMN build_method TEXT NOT NULL DEFAULT 'railpack'");
+}
+
+if (!hasColumn("projects", "dockerfile_path")) {
+  sqlite.exec("ALTER TABLE projects ADD COLUMN dockerfile_path TEXT NOT NULL DEFAULT 'Dockerfile'");
+}
+
 if (!hasColumn("database_backups", "trigger")) {
   sqlite.exec("ALTER TABLE database_backups ADD COLUMN trigger TEXT NOT NULL DEFAULT 'manual'");
 }

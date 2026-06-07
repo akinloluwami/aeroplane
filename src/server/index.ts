@@ -400,7 +400,9 @@ const updateServiceSchema = z.object({
   internalPort: z.coerce.number().int().min(1).max(65535).optional(),
   databasePublicEnabled: z.boolean().optional(),
   databasePublicHostname: publicHostnameSchema,
-  postgresLogicalReplicationEnabled: z.boolean().optional()
+  postgresLogicalReplicationEnabled: z.boolean().optional(),
+  buildMethod: z.enum(["railpack", "dockerfile"]).optional(),
+  dockerfilePath: z.string().trim().min(1).max(255).optional()
 });
 const transferServiceSchema = z.object({
   targetProjectId: z.string().trim().min(1)
@@ -638,6 +640,8 @@ async function publicService(service: Service) {
     databasePublicEnabled: Boolean(service.databasePublicEnabled),
     databasePublicHostname: service.databasePublicHostname,
     postgresLogicalReplicationEnabled: Boolean(service.postgresLogicalReplicationEnabled),
+    buildMethod: (service.buildMethod ?? "railpack") as "railpack" | "dockerfile",
+    dockerfilePath: service.dockerfilePath ?? "Dockerfile",
     status: liveStatus,
     reachable,
     localUrl,

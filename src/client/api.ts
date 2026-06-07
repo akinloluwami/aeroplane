@@ -32,6 +32,8 @@ export type Service = {
   databasePublicEnabled: boolean;
   databasePublicHostname: null | string;
   postgresLogicalReplicationEnabled: boolean;
+  buildMethod: "railpack" | "dockerfile";
+  dockerfilePath: string;
   status: string;
   reachable: boolean;
   localUrl: string;

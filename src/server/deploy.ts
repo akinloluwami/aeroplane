@@ -202,6 +202,22 @@ function cloneUrlWithToken(repoUrl: string, token?: string | null) {
   return url.toString();
 }
 
+// Detect whether the cloned source has a Dockerfile at a given path.
+// Returns the resolved dockerfile path relative to appDir, or null if not found.
+function detectDockerfilePath(appDir: string, configuredPath: string): string | null {
+  const candidates = [
+    configuredPath,
+    "Dockerfile",
+    "dockerfile"
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(join(appDir, candidate))) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
 async function ensureBuildkitAvailable(deploymentId: string) {
   const recovery = await ensureBuildkitRunning(config.buildkitHost);
   if (recovery.ok) {
@@ -1139,27 +1155,94 @@ async function runDeployment(deployment: Deployment, service: Service) {
     if (hasCommandOverrides) {
       appendDeploymentLog(deployment.id, "Applying command overrides through Railpack.");
     }
-    await ensureBuildkitAvailable(deployment.id);
-    const railpackArgs = ["build", "--name", imageTag, "--progress", "plain", "--cache-key", service.id];
-    railpackArgs.push(...railpackBuildEnvArgs(buildEnv));
-    const railpackConfigFile = railpackEnv.RAILPACK_CONFIG_FILE;
-    if (railpackConfigFile) {
-      appendDeploymentLog(deployment.id, `Using Railpack config file: ${railpackConfigFile}`, "system", secrets);
-      railpackArgs.push("--config-file", railpackConfigFile);
+
+    // --- Build method dispatch ---
+    // The stored buildMethod is either "railpack" (default) or "dockerfile".
+    // When set to "railpack" we additionally check whether the repo actually has a
+    // Dockerfile — if it does, we promote the method to "dockerfile" automatically
+    // and persist that discovery so it is shown in the UI.
+    const storedBuildMethod = (service.buildMethod ?? "railpack") as "railpack" | "dockerfile";
+    const storedDockerfilePath = service.dockerfilePath ?? "Dockerfile";
+
+    let resolvedBuildMethod = storedBuildMethod;
+    let resolvedDockerfilePath = storedDockerfilePath;
+
+    if (storedBuildMethod === "railpack") {
+      const detectedDockerfile = detectDockerfilePath(appDir, storedDockerfilePath);
+      if (detectedDockerfile) {
+        resolvedBuildMethod = "dockerfile";
+        resolvedDockerfilePath = detectedDockerfile;
+        appendDeploymentLog(deployment.id, `Detected Dockerfile at ${detectedDockerfile}. Switching build method to docker build.`);
+        // Persist the discovered method so the UI reflects it.
+        db.update(services)
+          .set({ buildMethod: "dockerfile", dockerfilePath: resolvedDockerfilePath, updatedAt: now() })
+          .where(eq(services.id, service.id))
+          .run();
+      }
     }
-    if (buildCommand) {
-      railpackArgs.push("--build-cmd", buildCommand);
+
+    if (resolvedBuildMethod === "dockerfile") {
+      // --- Dockerfile build path ---
+      const absoluteDockerfilePath = join(appDir, resolvedDockerfilePath);
+      if (!existsSync(absoluteDockerfilePath)) {
+        throw new Error(`Dockerfile not found at ${resolvedDockerfilePath}. Update the Dockerfile path in service settings or switch the build method to Railpack.`);
+      }
+
+      appendDeploymentLog(deployment.id, `Building image with Dockerfile: ${resolvedDockerfilePath}`);
+      await ensureDockerAvailable(deployment.id);
+
+      const dockerBuildArgs = [
+        "build",
+        "--file", absoluteDockerfilePath,
+        "--tag", imageTag,
+        "--progress", "plain"
+      ];
+
+      // Pass service env vars as build args so ARG declarations in the Dockerfile
+      // can pick them up. We use the same env vars that Railpack would see.
+      for (const [key, value] of Object.entries(buildEnv)) {
+        dockerBuildArgs.push("--build-arg", `${key}=${value}`);
+      }
+
+      dockerBuildArgs.push(appDir);
+
+      await runCommand(
+        "docker",
+        dockerBuildArgs,
+        deployment.id,
+        {
+          env: {
+            DOCKER_BUILDKIT: "1",
+            // Reuse Aeroplane's BuildKit daemon when it is a TCP address
+            ...(config.buildkitHost.startsWith("tcp://") ? { BUILDKIT_HOST: config.buildkitHost } : {})
+          },
+          redact: secrets
+        }
+      );
+    } else {
+      // --- Railpack build path (default) ---
+      await ensureBuildkitAvailable(deployment.id);
+      const railpackArgs = ["build", "--name", imageTag, "--progress", "plain", "--cache-key", service.id];
+      railpackArgs.push(...railpackBuildEnvArgs(buildEnv));
+      const railpackConfigFile = railpackEnv.RAILPACK_CONFIG_FILE;
+      if (railpackConfigFile) {
+        appendDeploymentLog(deployment.id, `Using Railpack config file: ${railpackConfigFile}`, "system", secrets);
+        railpackArgs.push("--config-file", railpackConfigFile);
+      }
+      if (buildCommand) {
+        railpackArgs.push("--build-cmd", buildCommand);
+      }
+      if (startCommand) {
+        railpackArgs.push("--start-cmd", startCommand);
+      }
+      railpackArgs.push(appDir);
+      await runCommand(
+        "railpack",
+        railpackArgs,
+        deployment.id,
+        { env: railpackEnv, redact: secrets }
+      );
     }
-    if (startCommand) {
-      railpackArgs.push("--start-cmd", startCommand);
-    }
-    railpackArgs.push(appDir);
-    await runCommand(
-      "railpack",
-      railpackArgs,
-      deployment.id,
-      { env: railpackEnv, redact: secrets }
-    );
 
     if (isStaticService) {
       await runCommand("docker", ["rm", "-f", containerName], deployment.id).catch(() => {
