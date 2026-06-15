@@ -477,6 +477,39 @@ export type ToolCheck = {
   detail: string;
 };
 
+export type MonitoringSnapshot = {
+  timestamp: string;
+  cpu: {
+    usagePercent: number;
+    cores: number;
+  };
+  memory: {
+    usedBytes: number;
+    totalBytes: number;
+  };
+  disk: {
+    usedBytes: number;
+    totalBytes: number;
+    mount: string;
+  } | null;
+  docker: {
+    available: boolean;
+    totalBytes: number;
+    images: number;
+    containers: number;
+    volumes: number;
+    buildCache: number;
+  };
+  blockIO: {
+    readBytes: number;
+    writeBytes: number;
+  };
+  networkIO: {
+    inBytes: number;
+    outBytes: number;
+  };
+};
+
 export type SystemUpdateCommit = {
   sha: string;
   shortSha: string;
@@ -709,6 +742,7 @@ export const api = {
       body: JSON.stringify(body)
     }),
   system: () => request<{ tools: ToolCheck[] }>("/api/system"),
+  monitoring: () => request<MonitoringSnapshot>("/api/system/monitoring"),
   frameworkIcons: () => request<{ icons: FrameworkIconAsset[] }>("/api/assets/framework-icons"),
   githubStatus: () => request<GitHubStatus>("/api/github/status"),
   githubRepos: (query = "") => request<{ repos: GitHubRepo[] }>(`/api/github/repos?q=${encodeURIComponent(query)}`),

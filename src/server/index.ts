@@ -51,6 +51,7 @@ import {
 } from "./schema.js";
 import { getSystemChecks } from "./system.js";
 import { getSystemMaintenanceInfo, maintenanceCleanupTargets, runSystemMaintenanceCleanup } from "./system-maintenance.js";
+import { collectMonitoringSnapshot } from "./monitoring.js";
 import { writeAndReloadCaddy } from "./caddy.js";
 import { databaseConnectionEnvSuggestionsForProject, databaseConnectionEnvSuggestionsForService, syncProjectDatabaseConnectionEnv } from "./database-service-linker.js";
 import { createUniqueSlug } from "../shared/slug.js";
@@ -1350,6 +1351,8 @@ app.use("/api/system/updates", requireOwnerSessionAccessMiddleware);
 app.use("/api/system/updates/*", requireOwnerSessionAccessMiddleware);
 app.use("/api/system/maintenance", requireOwnerSessionAccessMiddleware);
 app.use("/api/system/maintenance/*", requireOwnerSessionAccessMiddleware);
+app.use("/api/system/monitoring", requireOwnerSessionAccessMiddleware);
+app.use("/api/system/monitoring/*", requireOwnerSessionAccessMiddleware);
 app.use("/api/system/migration/*", requireOwnerSessionAccessMiddleware);
 app.use("/api/system/users", requireOwnerSessionAccessMiddleware);
 app.use("/api/system/users/*", requireOwnerSessionAccessMiddleware);
@@ -1386,6 +1389,62 @@ app.get("/api/system", async (c) => {
 });
 
 app.get("/api/system/maintenance", async (c) => c.json(await getSystemMaintenanceInfo()));
+
+app.get("/api/system/monitoring", async (c) => c.json(await collectMonitoringSnapshot()));
+
+app.get("/api/system/monitoring/stream", (c) => {
+  const encoder = new TextEncoder();
+
+  return new Response(
+    new ReadableStream({
+      start(controller) {
+        let closed = false;
+        const write = (event: string, data: unknown) => {
+          if (closed) return;
+          try {
+            controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+          } catch {
+            closed = true;
+          }
+        };
+
+        let running = false;
+        const tick = async () => {
+          if (closed || running) return;
+          running = true;
+          try {
+            write("sample", await collectMonitoringSnapshot());
+          } catch (error) {
+            write("status", { ok: false, detail: error instanceof Error ? error.message : "Monitoring failed" });
+          } finally {
+            running = false;
+          }
+        };
+
+        void tick();
+        const interval = setInterval(() => void tick(), 2000);
+
+        c.req.raw.signal.addEventListener("abort", () => {
+          if (closed) return;
+          closed = true;
+          clearInterval(interval);
+          try {
+            controller.close();
+          } catch {
+            // Already closed.
+          }
+        });
+      }
+    }),
+    {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive"
+      }
+    }
+  );
+});
 
 app.post("/api/system/maintenance/cleanup", async (c) => {
   const body = maintenanceCleanupSchema.safeParse(await c.req.json());
