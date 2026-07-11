@@ -1,7 +1,7 @@
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import type { ReactNode } from "react";
-import type { GitHubDirectory } from "../../api";
-import { AppIcon } from "../ui/primitives";
+import type { Framework, GitHubDirectory } from "../../api";
+import { AppIcon, FrameworkMark } from "../ui/primitives";
 
 type DirectoryTreeProps = {
   repoLabel: string;
@@ -12,6 +12,7 @@ type DirectoryTreeProps = {
   errorMessage?: string;
   footerMessage: string;
   rootLabel?: string;
+  rootFramework?: Framework | null;
   onToggle: (path: string) => void | Promise<void>;
   onSelect: (path: string) => void;
 };
@@ -25,6 +26,7 @@ export function DirectoryTree({
   errorMessage,
   footerMessage,
   rootLabel = "Repository root",
+  rootFramework = null,
   onToggle,
   onSelect
 }: DirectoryTreeProps) {
@@ -60,7 +62,10 @@ export function DirectoryTree({
               onClick={() => onSelect(directory.path)}
             />
             <button type="button" className="min-w-0 flex-1 text-left" onClick={() => onSelect(directory.path)}>
-              <div className="truncate text-base font-medium text-zinc-100">{directory.name}</div>
+              <div className="flex items-center gap-2">
+                {directory.framework ? <FrameworkMark framework={directory.framework} size={16} fallback={null} /> : null}
+                <div className="truncate text-base font-medium text-zinc-100">{directory.name}</div>
+              </div>
               <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">{directory.path}</div>
             </button>
           </div>
@@ -82,7 +87,10 @@ export function DirectoryTree({
             onClick={() => onSelect("")}
           />
           <button type="button" className="flex-1 text-left" onClick={() => onSelect("")}>
-            <div className="text-base font-medium text-zinc-100">{rootLabel}</div>
+            <div className="flex items-center gap-2">
+              {rootFramework ? <FrameworkMark framework={rootFramework} size={16} fallback={null} /> : null}
+              <div className="text-base font-medium text-zinc-100">{rootLabel}</div>
+            </div>
           </button>
         </div>
         {renderRows("", 0)}

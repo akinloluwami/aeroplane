@@ -20,7 +20,7 @@ import { isPostgresFamilyDatabase } from "./database-engine.js";
 import { abortDeployment, allocateHostPort, containerNameForService, enqueueDeployment, getServiceById, removeServiceRuntime, startDeployWorker, staticSiteDirForService } from "./deploy.js";
 import { db, nowIso } from "./db.js";
 import { normalizeServiceBuildMethod, serviceBuildMethods } from "./dockerfile-build.js";
-import { detectFramework, detectFrameworkPreview } from "./frameworks.js";
+import { detectFramework, detectFrameworkPreview, frameworkMetaForSlug } from "./frameworks.js";
 import { frameworkIconAsset, frameworkIconUrl, prewarmFrameworkIconCache } from "./framework-icons.js";
 import { DATABASE_ICON_CATALOG, FRAMEWORK_ICON_CATALOG } from "./framework-icon-catalog.js";
 import { envExampleVariableSuggestions } from "./env-example-suggestions.js";
@@ -28,7 +28,16 @@ import { resolveServiceEnv } from "./variable-resolver.js";
 import { getRailwayProjects, getRailwayProjectDetails, importRailwayProject } from "./railway-importer.js";
 import { startRailwayImportAutomation } from "./railway-import-automation.js";
 import { getVercelTeams, getVercelProjects, getVercelProjectDetails, importVercelProject } from "./vercel-importer.js";
-import { buildGitHubAppManifest, convertGitHubManifestCode, githubConnectionStatus, listConnectedRepos, listRepoBranches, listRepoDirectories, repoUrlFromFullName } from "./github-connect.js";
+import {
+  buildGitHubAppManifest,
+  convertGitHubManifestCode,
+  filesInDirectory,
+  githubConnectionStatus,
+  listConnectedRepos,
+  listRepoBranches,
+  listRepoDirectories,
+  repoUrlFromFullName
+} from "./github-connect.js";
 import { branchFromGitRef, verifyGitHubSignature } from "./github.js";
 import { rateLimit } from "./rate-limit.js";
 import { subscribeToDeploymentLogs } from "./logBus.js";
@@ -1568,6 +1577,7 @@ app.use("/api/github/status", requireOwnerSessionAccessMiddleware);
 app.use("/api/github/repos", requireOwnerSessionAccessMiddleware);
 app.use("/api/github/branches", requireOwnerSessionAccessMiddleware);
 app.use("/api/github/directories", requireOwnerSessionAccessMiddleware);
+app.use("/api/github/directories/framework", requireOwnerSessionAccessMiddleware);
 app.use("/api/integrations/*", requireSessionAccessMiddleware);
 app.use("/api/projects", requireApiMethodAccessMiddleware);
 app.use("/api/projects/*", requireApiMethodAccessMiddleware);
@@ -2121,10 +2131,47 @@ app.get("/api/github/directories", async (c) => {
     return jsonError("Missing repo or branch");
   }
 
+  const path = c.req.query("path") ?? "";
   try {
-    return c.json({ directories: await listRepoDirectories(repoFullName, branch, c.req.query("path") ?? "") });
+    const directories = await listRepoDirectories(repoFullName, branch, path);
+    const withFrameworks = await Promise.all(
+      directories.map(async ({ frameworkHintSlug, ...directory }) => ({
+        ...directory,
+        framework: frameworkHintSlug ? await frameworkMetaForSlug(frameworkHintSlug) : null
+      }))
+    );
+
+    // The root has no parent row of its own, so its badge is resolved here, attached to
+    // the listing that represents it — the top-level fetch. Unlike child rows, this is
+    // resolved precisely (not just coarsely) up front: root is exactly one folder, not
+    // N, so reading its own manifest content doesn't reintroduce the N-multiplied cost
+    // the lazy per-folder tier exists to avoid. A folder with no recognizable framework
+    // of its own (e.g. a bare monorepo root) correctly resolves to no badge at all.
+    const rootFramework =
+      path === "" ? await detectFramework(repoFullName, branch, "", {}, await filesInDirectory(repoFullName, branch, "")) : null;
+
+    return c.json({ directories: withFrameworks, rootFramework });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Could not load directories", 503);
+  }
+});
+
+// Precise detection is deferred until a folder is actually opened, so it costs at most
+// one file read (the manifest we already know is there) instead of probing every folder
+// in the tree up front.
+app.get("/api/github/directories/framework", async (c) => {
+  const repoFullName = c.req.query("repo");
+  const branch = c.req.query("branch");
+  if (!repoFullName || !branch) {
+    return jsonError("Missing repo or branch");
+  }
+
+  const path = c.req.query("path") ?? "";
+  try {
+    const knownFiles = await filesInDirectory(repoFullName, branch, path);
+    return c.json({ framework: await detectFramework(repoFullName, branch, path, {}, knownFiles) });
+  } catch (error) {
+    return jsonError(error instanceof Error ? error.message : "Could not detect framework", 503);
   }
 });
 

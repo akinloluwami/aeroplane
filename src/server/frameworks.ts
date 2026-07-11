@@ -57,7 +57,11 @@ function parsePackageJson(source: null | string) {
 
 function packageJsonPaths(rootDir: null | string) {
   const normalizedRoot = rootDir?.trim().replace(/^\/+|\/+$/g, "") ?? "";
-  return normalizedRoot ? [`${normalizedRoot}/package.json`, "package.json"] : ["package.json"];
+  // No fallback to the repo-root package.json here: a folder with no manifest of its
+  // own should report "nothing detected," not silently inherit an unrelated folder's
+  // framework. Genuine monorepo members are still resolved separately, through root's
+  // declared `workspaces` globs in candidatePackagePaths.
+  return normalizedRoot ? [`${normalizedRoot}/package.json`] : ["package.json"];
 }
 
 function packageJsonDir(path: string) {
@@ -238,6 +242,12 @@ async function frameworkMetaFromCatalog(candidate: FrameworkIconCatalogEntry): P
   };
 }
 
+export async function frameworkMetaForSlug(slug: string): Promise<FrameworkMeta | null> {
+  const entry = catalogEntry(slug);
+  if (!entry) return null;
+  return frameworkMetaFromCatalog(entry);
+}
+
 async function databaseFrameworkMeta(dbType: string) {
   const entry = DATABASE_ICON_CATALOG.find((candidate) => candidate.slug === dbType);
   if (!entry) return null;
@@ -254,8 +264,14 @@ function setCachedFramework(key: string, value: FrameworkMeta | null) {
   frameworkCache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
 }
 
-async function resolveFramework(repoFullName: string, branch: string, rootDir: null | string, options: FrameworkDetectionOptions = {}) {
-  const fileMatch = await detectFrameworkFromProjectFiles((path) => readRepoFile(repoFullName, branch, path), rootDir, options);
+async function resolveFramework(
+  repoFullName: string,
+  branch: string,
+  rootDir: null | string,
+  options: FrameworkDetectionOptions = {},
+  knownFiles?: Set<string>
+) {
+  const fileMatch = await detectFrameworkFromProjectFiles((path) => readRepoFile(repoFullName, branch, path), rootDir, options, knownFiles);
   if (fileMatch) {
     return frameworkMetaFromCatalog(fileMatch);
   }
@@ -269,11 +285,18 @@ async function resolveFramework(repoFullName: string, branch: string, rootDir: n
   return frameworkMetaFromCatalog(runtimeMatch);
 }
 
-function warmFrameworkCache(key: string, repoFullName: string, branch: string, rootDir: null | string, options: FrameworkDetectionOptions = {}) {
+function warmFrameworkCache(
+  key: string,
+  repoFullName: string,
+  branch: string,
+  rootDir: null | string,
+  options: FrameworkDetectionOptions = {},
+  knownFiles?: Set<string>
+) {
   const existing = frameworkDetectionInFlight.get(key);
   if (existing) return existing;
 
-  const promise = resolveFramework(repoFullName, branch, rootDir, options)
+  const promise = resolveFramework(repoFullName, branch, rootDir, options, knownFiles)
     .then((framework) => {
       setCachedFramework(key, framework);
       return framework;
@@ -285,7 +308,13 @@ function warmFrameworkCache(key: string, repoFullName: string, branch: string, r
   return promise;
 }
 
-export async function detectFramework(repoFullName: null | string, branch: string, rootDir: null | string, options: FrameworkDetectionOptions = {}) {
+export async function detectFramework(
+  repoFullName: null | string,
+  branch: string,
+  rootDir: null | string,
+  options: FrameworkDetectionOptions = {},
+  knownFiles?: Set<string>
+) {
   if (!repoFullName) return null;
 
   if (repoFullName.startsWith("database:")) {
@@ -297,7 +326,7 @@ export async function detectFramework(repoFullName: null | string, branch: strin
   const cached = cachedFramework(key);
   if (cached !== undefined) return cached;
 
-  return warmFrameworkCache(key, repoFullName, branch, rootDir, options);
+  return warmFrameworkCache(key, repoFullName, branch, rootDir, options, knownFiles);
 }
 
 export async function detectFrameworkPreview(repoFullName: null | string, branch: string, rootDir: null | string, options: FrameworkDetectionOptions = {}) {

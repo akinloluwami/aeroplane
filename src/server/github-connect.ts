@@ -1,5 +1,6 @@
 import { createPrivateKey, sign } from "node:crypto";
 import { config } from "./config.js";
+import { deriveFrameworkHint, directChildFileNames } from "./framework-tree-detector.js";
 
 type GitHubRepo = {
   id: number;
@@ -15,9 +16,14 @@ type GitHubBranch = {
   name: string;
 };
 
-type GitHubTreeEntry = {
+export type GitHubTreeEntry = {
   path: string;
   type: "blob" | "tree";
+};
+
+type RepoTreeCacheEntry = {
+  expiresAt: number;
+  value: GitHubTreeEntry[];
 };
 
 type GitHubContentFile = {
@@ -53,6 +59,9 @@ type GitHubStatus = {
 };
 
 const installationTokenCache = new Map<number, InstallationTokenCacheEntry>();
+const repoTreeCache = new Map<string, RepoTreeCacheEntry>();
+const repoTreeInFlight = new Map<string, Promise<GitHubTreeEntry[]>>();
+const REPO_TREE_CACHE_TTL_MS = 10 * 60 * 1000;
 const githubPageSize = 100;
 
 function hasGitHubAppConfig() {
@@ -330,7 +339,11 @@ export async function listRepoBranches(repoFullName: string) {
   return branches.map((branch) => branch.name);
 }
 
-export async function listRepoDirectories(repoFullName: string, branch: string, parentPath = "") {
+function repoTreeCacheKey(repoFullName: string, branch: string) {
+  return `${repoFullName}::${branch}`;
+}
+
+async function fetchRepoTree(repoFullName: string, branch: string) {
   const [owner, repo] = repoFullName.split("/");
   const branchInfo = await githubRepoRequest<{ commit: { sha: string } }>(
     repoFullName,
@@ -340,11 +353,46 @@ export async function listRepoDirectories(repoFullName: string, branch: string, 
     repoFullName,
     `/repos/${owner}/${repo}/git/trees/${branchInfo.commit.sha}?recursive=1`
   );
+  return tree.tree;
+}
 
+// The recursive tree is the full file manifest for the repo at this branch. Directory
+// listing and framework detection both need it, so it's fetched once and shared instead
+// of re-downloading it on every folder expand.
+export async function repoTree(repoFullName: string, branch: string): Promise<GitHubTreeEntry[]> {
+  const key = repoTreeCacheKey(repoFullName, branch);
+  const cached = repoTreeCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const inFlight = repoTreeInFlight.get(key);
+  if (inFlight) return inFlight;
+
+  const promise = fetchRepoTree(repoFullName, branch)
+    .then((tree) => {
+      repoTreeCache.set(key, { value: tree, expiresAt: Date.now() + REPO_TREE_CACHE_TTL_MS });
+      return tree;
+    })
+    .finally(() => {
+      repoTreeInFlight.delete(key);
+    });
+  repoTreeInFlight.set(key, promise);
+  return promise;
+}
+
+// File names (not paths) directly inside dirPath, read from the cached tree. Lets the
+// precise framework detector read only the files that actually exist instead of probing
+// every candidate manifest name.
+export async function filesInDirectory(repoFullName: string, branch: string, dirPath: string) {
+  const tree = await repoTree(repoFullName, branch);
+  return directChildFileNames(dirPath.trim().replace(/^\/+|\/+$/g, ""), tree);
+}
+
+export async function listRepoDirectories(repoFullName: string, branch: string, parentPath = "") {
+  const tree = await repoTree(repoFullName, branch);
   const normalizedParent = parentPath.trim().replace(/^\/+|\/+$/g, "");
   const children = new Map<string, { path: string; name: string; depth: number; hasChildren: boolean }>();
 
-  for (const entry of tree.tree) {
+  for (const entry of tree) {
     const entryPath = entry.path.trim().replace(/^\/+|\/+$/g, "");
     if (!entryPath) continue;
 
@@ -382,7 +430,9 @@ export async function listRepoDirectories(repoFullName: string, branch: string, 
     });
   }
 
-  return [...children.values()].sort((left, right) => left.path.localeCompare(right.path));
+  return [...children.values()]
+    .map((child) => ({ ...child, frameworkHintSlug: deriveFrameworkHint(child.path, tree) }))
+    .sort((left, right) => left.path.localeCompare(right.path));
 }
 
 export async function getCloneTokenForRepo(repoFullName: string) {

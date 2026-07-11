@@ -640,6 +640,7 @@ export type GitHubDirectory = {
   name: string;
   depth: number;
   hasChildren: boolean;
+  framework: Framework | null;
 };
 
 export type GitHubStatus = {
@@ -730,8 +731,12 @@ export const api = {
   githubRepos: (query = "") => request<{ repos: GitHubRepo[] }>(`/api/github/repos?q=${encodeURIComponent(query)}`),
   githubBranches: (repoFullName: string) => request<{ branches: string[] }>(`/api/github/branches?repo=${encodeURIComponent(repoFullName)}`),
   githubDirectories: (repoFullName: string, branch: string, path = "") =>
-    request<{ directories: GitHubDirectory[] }>(
+    request<{ directories: GitHubDirectory[]; rootFramework: Framework | null }>(
       `/api/github/directories?repo=${encodeURIComponent(repoFullName)}&branch=${encodeURIComponent(branch)}&path=${encodeURIComponent(path)}`
+    ),
+  githubDirectoryFramework: (repoFullName: string, branch: string, path = "") =>
+    request<{ framework: Framework | null }>(
+      `/api/github/directories/framework?repo=${encodeURIComponent(repoFullName)}&branch=${encodeURIComponent(branch)}&path=${encodeURIComponent(path)}`
     ),
   projects: () => request<{ projects: ProjectCard[] }>("/api/projects"),
   project: (slug: string) => request<{ project: ProjectDetail }>(`/api/projects/${slug}`),

@@ -21,7 +21,7 @@ type FileRule = {
   slug: string;
 };
 
-const candidateFileNames = [
+export const candidateFileNames = [
   "go.mod",
   "Cargo.toml",
   "app.csproj",
@@ -65,9 +65,14 @@ function containsAny(value: string, patterns: RegExp[]) {
   return patterns.some((pattern) => pattern.test(value));
 }
 
-async function readProjectFiles(readFile: ProjectFileReader, rootDir: null | string) {
+async function readProjectFiles(readFile: ProjectFileReader, rootDir: null | string, knownFiles?: Set<string>) {
+  // When the caller already knows which files exist in this directory (from a repo tree
+  // listing), skip probing the ones that don't — turns up to 16 speculative reads into
+  // just the one or two that are actually there.
+  const namesToRead = knownFiles ? candidateFileNames.filter((name) => knownFiles.has(name)) : candidateFileNames;
+
   const reads = await Promise.all(
-    candidateFileNames.map(async (name) => {
+    namesToRead.map(async (name) => {
       const path = filePath(rootDir, name);
       const content = await readFile(path);
       return content ? { content, name, path } : null;
@@ -138,9 +143,10 @@ const fileRules: FileRule[] = [
 export async function detectFrameworkFromProjectFiles(
   readFile: ProjectFileReader,
   rootDir: null | string,
-  options: FrameworkFileDetectionOptions = {}
+  options: FrameworkFileDetectionOptions = {},
+  knownFiles?: Set<string>
 ): Promise<FrameworkIconCatalogEntry | null> {
-  const files = await readProjectFiles(readFile, rootDir);
+  const files = await readProjectFiles(readFile, rootDir, knownFiles);
   if (files.length === 0) return null;
 
   for (const rule of fileRules) {

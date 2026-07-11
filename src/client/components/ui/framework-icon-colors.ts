@@ -3,7 +3,6 @@ const WHITE_ON_DARK_ICON_SLUGS = new Set([
   "expo",
   "flask",
   "golang",
-  "nextjs",
   "rust"
 ]);
 
