@@ -111,7 +111,9 @@ const fileRules: FileRule[] = [
   {
     slug: "rust",
     fileNames: ["Cargo.toml"],
-    matches: (file) => /\[package\]/i.test(file.content)
+    // A workspace-root Cargo.toml has [workspace] but no [package] section of its own —
+    // still unambiguously Rust, so presence alone is the fallback signal.
+    matches: (file) => containsAny(file.content, [/\[package\]/i, /\[workspace\]/i])
   },
   {
     slug: "dotnet",
@@ -126,7 +128,11 @@ const fileRules: FileRule[] = [
   {
     slug: "java",
     fileNames: ["pom.xml", "build.gradle", "build.gradle.kts"],
-    matches: (file) => containsAny(file.content, [/<project[\s>]/i, /\bjava\b/i])
+    // pom.xml is always <project ...> XML; a plain Gradle build file (Groovy or Kotlin
+    // DSL) may never literally contain "java" as a token (e.g. Kotlin/Android-only
+    // plugins), so its filename alone is the fallback signal — unlike pom.xml/build.gradle,
+    // there's no unrelated ecosystem that also names a file build.gradle(.kts).
+    matches: (file) => file.name !== "pom.xml" || containsAny(file.content, [/<project[\s>]/i, /\bjava\b/i])
   },
   {
     slug: "java",
@@ -136,7 +142,14 @@ const fileRules: FileRule[] = [
   {
     slug: "python",
     fileNames: ["requirements.txt", "pyproject.toml", "main.py", "app.py", "server.py"],
-    matches: (file, _files, options) => file.name.endsWith(".py") || /\bpython\b/i.test(commandText(options))
+    // requirements.txt/pyproject.toml presence is already unambiguous on its own — an
+    // ordinary one with no Django/Flask import shouldn't fall through to "no framework
+    // detected" when the coarse layer already showed a Python badge for it.
+    matches: (file, _files, options) =>
+      file.name.endsWith(".py") ||
+      file.name === "requirements.txt" ||
+      file.name === "pyproject.toml" ||
+      /\bpython\b/i.test(commandText(options))
   }
 ];
 

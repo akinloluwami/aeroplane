@@ -17,7 +17,7 @@ import {
   WorkflowSquare07Icon,
   CloudServerIcon
 } from "@hugeicons/core-free-icons";
-import { FormEvent, ReactNode, startTransition, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, ReactNode, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   api,
   type DatabaseVariableSuggestion,
@@ -152,6 +152,8 @@ export function CreateServiceModal({
   const [directoryNodes, setDirectoryNodes] = useState<Record<string, GitHubDirectory[]>>({});
   const [expandedDirectories, setExpandedDirectories] = useState<Set<string>>(new Set());
   const [preciseFrameworks, setPreciseFrameworks] = useState<Record<string, Framework | null>>({});
+  const directoryFrameworkRequests = useRef(new Map<string, Promise<void>>());
+  const repoSelectionRef = useRef(0);
   const [buildOpen, setBuildOpen] = useState(false);
   const [envOpen, setEnvOpen] = useState(false);
   const [envSuggestionsOpen, setEnvSuggestionsOpen] = useState(false);
@@ -221,6 +223,7 @@ export function CreateServiceModal({
       setLoadingDirectories(false);
       setLoadingDirectoryPaths(new Set());
       setPreciseFrameworks({});
+      repoSelectionRef.current += 1;
       setRepoError("");
       setDirectoryError("");
       setDirectoryNodes({});
@@ -408,6 +411,7 @@ export function CreateServiceModal({
     setDirectoryNodes({});
     setExpandedDirectories(new Set());
     setPreciseFrameworks({});
+    repoSelectionRef.current += 1;
     setDirectoryError("");
     setStep("directory");
   }
@@ -485,15 +489,36 @@ export function CreateServiceModal({
       return;
     }
 
-    try {
-      const { framework } = await api.githubDirectoryFramework(form.repoFullName, form.branch, path);
-      githubDirectoryFrameworkCache.set(cacheKey, framework);
-      startTransition(() => {
-        setPreciseFrameworks((current) => ({ ...current, [path]: framework }));
-      });
-    } catch {
-      // Best-effort upgrade; the coarse badge from the directory listing stays as-is.
-    }
+    // Toggling/selecting the same folder again before the first lookup lands (or a
+    // stray double-click firing both the toggle and select handlers) would otherwise
+    // issue a duplicate request — reuse the in-flight one instead.
+    const existing = directoryFrameworkRequests.current.get(cacheKey);
+    if (existing) return existing;
+
+    const repoFullName = form.repoFullName;
+    const branch = form.branch;
+    const selectionAtRequest = repoSelectionRef.current;
+
+    const promise = (async () => {
+      try {
+        const { framework } = await api.githubDirectoryFramework(repoFullName, branch, path);
+        githubDirectoryFrameworkCache.set(cacheKey, framework);
+        // Discard if the user switched repos while this was in flight — otherwise a
+        // late-arriving result can label a folder in the newly selected repo with a
+        // framework detected in the previous one.
+        if (repoSelectionRef.current !== selectionAtRequest) return;
+        startTransition(() => {
+          setPreciseFrameworks((current) => ({ ...current, [path]: framework }));
+        });
+      } catch {
+        // Best-effort upgrade; the coarse badge from the directory listing stays as-is.
+      } finally {
+        directoryFrameworkRequests.current.delete(cacheKey);
+      }
+    })();
+
+    directoryFrameworkRequests.current.set(cacheKey, promise);
+    return promise;
   }
 
   async function submit(event: FormEvent) {
@@ -866,6 +891,7 @@ export function CreateServiceModal({
                     setDirectoryNodes({});
                     setExpandedDirectories(new Set());
                     setPreciseFrameworks({});
+                    repoSelectionRef.current += 1;
                     setDirectoryError("");
                   }}
                 >

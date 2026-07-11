@@ -1,6 +1,7 @@
 import { createPrivateKey, sign } from "node:crypto";
 import { config } from "./config.js";
 import { deriveFrameworkHint, directChildFileNames } from "./framework-tree-detector.js";
+import { createTtlCache } from "./ttl-cache.js";
 
 type GitHubRepo = {
   id: number;
@@ -19,11 +20,6 @@ type GitHubBranch = {
 export type GitHubTreeEntry = {
   path: string;
   type: "blob" | "tree";
-};
-
-type RepoTreeCacheEntry = {
-  expiresAt: number;
-  value: GitHubTreeEntry[];
 };
 
 type GitHubContentFile = {
@@ -59,9 +55,8 @@ type GitHubStatus = {
 };
 
 const installationTokenCache = new Map<number, InstallationTokenCacheEntry>();
-const repoTreeCache = new Map<string, RepoTreeCacheEntry>();
+const repoTreeCache = createTtlCache<string, GitHubTreeEntry[]>(10 * 60 * 1000);
 const repoTreeInFlight = new Map<string, Promise<GitHubTreeEntry[]>>();
-const REPO_TREE_CACHE_TTL_MS = 10 * 60 * 1000;
 const githubPageSize = 100;
 
 function hasGitHubAppConfig() {
@@ -362,14 +357,14 @@ async function fetchRepoTree(repoFullName: string, branch: string) {
 export async function repoTree(repoFullName: string, branch: string): Promise<GitHubTreeEntry[]> {
   const key = repoTreeCacheKey(repoFullName, branch);
   const cached = repoTreeCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  if (cached) return cached;
 
   const inFlight = repoTreeInFlight.get(key);
   if (inFlight) return inFlight;
 
   const promise = fetchRepoTree(repoFullName, branch)
     .then((tree) => {
-      repoTreeCache.set(key, { value: tree, expiresAt: Date.now() + REPO_TREE_CACHE_TTL_MS });
+      repoTreeCache.set(key, tree);
       return tree;
     })
     .finally(() => {

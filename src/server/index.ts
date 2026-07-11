@@ -2148,7 +2148,9 @@ app.get("/api/github/directories", async (c) => {
     // the lazy per-folder tier exists to avoid. A folder with no recognizable framework
     // of its own (e.g. a bare monorepo root) correctly resolves to no badge at all.
     const rootFramework =
-      path === "" ? await detectFramework(repoFullName, branch, "", {}, await filesInDirectory(repoFullName, branch, "")) : null;
+      path === ""
+        ? await detectFramework(repoFullName, branch, "", { exactPathOnly: true }, await filesInDirectory(repoFullName, branch, ""))
+        : null;
 
     return c.json({ directories: withFrameworks, rootFramework });
   } catch (error) {
@@ -2158,7 +2160,8 @@ app.get("/api/github/directories", async (c) => {
 
 // Precise detection is deferred until a folder is actually opened, so it costs at most
 // one file read (the manifest we already know is there) instead of probing every folder
-// in the tree up front.
+// in the tree up front. exactPathOnly keeps it scoped to that one folder — without it,
+// workspace-aware resolution would pull in sibling workspace members' manifests too.
 app.get("/api/github/directories/framework", async (c) => {
   const repoFullName = c.req.query("repo");
   const branch = c.req.query("branch");
@@ -2169,7 +2172,7 @@ app.get("/api/github/directories/framework", async (c) => {
   const path = c.req.query("path") ?? "";
   try {
     const knownFiles = await filesInDirectory(repoFullName, branch, path);
-    return c.json({ framework: await detectFramework(repoFullName, branch, path, {}, knownFiles) });
+    return c.json({ framework: await detectFramework(repoFullName, branch, path, { exactPathOnly: true }, knownFiles) });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Could not detect framework", 503);
   }

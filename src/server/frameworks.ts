@@ -2,6 +2,7 @@ import { readRepoFile } from "./github-connect.js";
 import { detectFrameworkFromProjectFiles } from "./framework-file-detectors.js";
 import { DATABASE_ICON_CATALOG, FRAMEWORK_ICON_CATALOG, type FrameworkIconCatalogEntry } from "./framework-icon-catalog.js";
 import { cachedFrameworkIconMeta } from "./framework-icons.js";
+import { createTtlCache } from "./ttl-cache.js";
 
 export type FrameworkMeta = {
   logoUrl: null | string;
@@ -19,15 +20,22 @@ type PackageJson = {
   workspaces?: string[] | { packages?: string[] };
 };
 
-const frameworkCache = new Map<string, { expiresAt: number; value: FrameworkMeta | null }>();
+const frameworkCache = createTtlCache<string, FrameworkMeta | null>(10 * 60 * 1000);
 const frameworkDetectionInFlight = new Map<string, Promise<FrameworkMeta | null>>();
-const CACHE_TTL_MS = 10 * 60 * 1000;
 
 type FrameworkDetectionOptions = {
   buildCommand?: null | string;
   installCommand?: null | string;
   serviceName?: null | string;
   startCommand?: null | string;
+  // Skip workspace/filter-aware resolution and check only rootDir's own package.json.
+  // The directory picker uses this: it has no configured install/build commands to
+  // derive a --filter or service name from, so the workspace-glob and literal-entry
+  // expansion in candidatePackagePaths has nothing legitimate to scope itself to — it
+  // would otherwise pull in every declared workspace member's manifest regardless of
+  // which folder is actually being browsed, both mislabeling folders with an unrelated
+  // sibling's framework and reading N manifests per expanded folder instead of one.
+  exactPathOnly?: boolean;
 };
 
 type PackageJsonRead = {
@@ -43,7 +51,7 @@ function detectionCommandSignature(options: FrameworkDetectionOptions = {}) {
 }
 
 function cacheKey(repoFullName: string, branch: string, rootDir: null | string, options: FrameworkDetectionOptions = {}) {
-  return `${repoFullName}::${branch}::${rootDir ?? ""}::${detectionCommandSignature(options)}`;
+  return `${repoFullName}::${branch}::${rootDir ?? ""}::${detectionCommandSignature(options)}::${options.exactPathOnly ? "exact" : ""}`;
 }
 
 function parsePackageJson(source: null | string) {
@@ -161,6 +169,12 @@ async function readPackageJsonAt(repoFullName: string, branch: string, path: str
 }
 
 async function readPackageJsons(repoFullName: string, branch: string, rootDir: null | string, options: FrameworkDetectionOptions = {}) {
+  if (options.exactPathOnly) {
+    const normalizedRoot = rootDir?.trim().replace(/^\/+|\/+$/g, "") ?? "";
+    const read = await readPackageJsonAt(repoFullName, branch, normalizedRoot ? `${normalizedRoot}/package.json` : "package.json");
+    return read ? [read.packageJson] : [];
+  }
+
   const rootPackage = await readPackageJsonAt(repoFullName, branch, "package.json");
   const filters = commandPackageFilters(options);
   const reads: PackageJsonRead[] = [];
@@ -255,13 +269,11 @@ async function databaseFrameworkMeta(dbType: string) {
 }
 
 function cachedFramework(key: string) {
-  const cached = frameworkCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
-  return undefined;
+  return frameworkCache.get(key);
 }
 
 function setCachedFramework(key: string, value: FrameworkMeta | null) {
-  frameworkCache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+  frameworkCache.set(key, value);
 }
 
 async function resolveFramework(
