@@ -171,6 +171,9 @@ async function readPackageJsonAt(repoFullName: string, branch: string, path: str
 async function readPackageJsons(repoFullName: string, branch: string, rootDir: null | string, options: FrameworkDetectionOptions = {}) {
   if (options.exactPathOnly) {
     const normalizedRoot = rootDir?.trim().replace(/^\/+|\/+$/g, "") ?? "";
+    // Matches the same rejection candidatePackagePaths' addPath already applies below —
+    // a rootDir containing ".." must never reach a constructed GitHub contents path.
+    if (normalizedRoot.includes("..")) return [];
     const read = await readPackageJsonAt(repoFullName, branch, normalizedRoot ? `${normalizedRoot}/package.json` : "package.json");
     return read ? [read.packageJson] : [];
   }

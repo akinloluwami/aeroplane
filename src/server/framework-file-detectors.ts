@@ -128,11 +128,11 @@ const fileRules: FileRule[] = [
   {
     slug: "java",
     fileNames: ["pom.xml", "build.gradle", "build.gradle.kts"],
-    // pom.xml is always <project ...> XML; a plain Gradle build file (Groovy or Kotlin
-    // DSL) may never literally contain "java" as a token (e.g. Kotlin/Android-only
-    // plugins), so its filename alone is the fallback signal — unlike pom.xml/build.gradle,
-    // there's no unrelated ecosystem that also names a file build.gradle(.kts).
-    matches: (file) => file.name !== "pom.xml" || containsAny(file.content, [/<project[\s>]/i, /\bjava\b/i])
+    // Unlike pom.xml (always <project ...> XML), a Gradle build file is shared by
+    // Kotlin, Android, Scala and Groovy projects too — presence alone isn't safe to
+    // label "Java", so this stays content-gated. build.gradle/.kts are deliberately
+    // left out of the coarse tree detector's marker list for the same reason.
+    matches: (file) => containsAny(file.content, [/<project[\s>]/i, /\bjava\b/i])
   },
   {
     slug: "java",

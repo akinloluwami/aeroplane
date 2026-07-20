@@ -291,7 +291,11 @@ async function githubRepoRequest<T>(repoFullName: string, path: string): Promise
 export async function readRepoFile(repoFullName: string, branch: string, filePath: string) {
   const [owner, repo] = repoFullName.split("/");
   const normalizedPath = filePath.trim().replace(/^\/+/, "");
-  if (!owner || !repo || !normalizedPath) return null;
+  // Defense in depth: this is the boundary that actually builds the GitHub contents URL,
+  // so a ".." segment must never reach it even if a future caller forgets its own check —
+  // left uncaught here, it can walk the URL path back out of contents/{repo}/{owner} and
+  // redirect the request (using this server's GitHub credentials) to an unrelated repo.
+  if (!owner || !repo || !normalizedPath || normalizedPath.includes("..")) return null;
 
   try {
     const response = await githubRepoRequest<GitHubContentFile>(

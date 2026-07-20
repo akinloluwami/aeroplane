@@ -5,8 +5,10 @@ import type { GitHubTreeEntry } from "./github-connect.js";
 // framework-file-detectors.ts still resolves to this same family (e.g. go.mod is
 // always a Go project, whether or not it turns out to be Fiber specifically). Filenames
 // whose rule is content-gated and can plausibly fail to match (program.cs, server.java,
-// Main.java) are left out on purpose: badging a folder from bare presence when the
-// precise detector might come back with nothing is worse than showing no badge.
+// Main.java) — or, for build.gradle/build.gradle.kts, could genuinely belong to a
+// different family entirely (Kotlin, Android, Scala) — are left out on purpose: badging
+// a folder from bare presence when the precise detector might come back with nothing,
+// or with a wrong label, is worse than showing no badge.
 const FAMILY_SLUG_BY_FILE_NAME: Record<string, string> = {
   "go.mod": "golang",
   "Cargo.toml": "rust",
@@ -16,8 +18,6 @@ const FAMILY_SLUG_BY_FILE_NAME: Record<string, string> = {
   "app.py": "python",
   "server.py": "python",
   "pom.xml": "java",
-  "build.gradle": "java",
-  "build.gradle.kts": "java",
   "app.csproj": "dotnet",
   "server.csproj": "dotnet"
 };
