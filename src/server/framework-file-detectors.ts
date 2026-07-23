@@ -22,7 +22,7 @@ type FileRule = {
   slug: string;
 };
 
-const candidateFileNames = [
+export const candidateFileNames = [
   "go.mod",
   "Cargo.toml",
   "app.csproj",
@@ -66,9 +66,14 @@ function containsAny(value: string, patterns: RegExp[]) {
   return patterns.some((pattern) => pattern.test(value));
 }
 
-async function readProjectFiles(readFile: ProjectFileReader, rootDir: null | string) {
+async function readProjectFiles(readFile: ProjectFileReader, rootDir: null | string, knownFiles?: Set<string>) {
+  // When the caller already knows which files exist in this directory (from a repo tree
+  // listing), skip probing the ones that don't — turns up to 16 speculative reads into
+  // just the one or two that are actually there.
+  const namesToRead = knownFiles ? candidateFileNames.filter((name) => knownFiles.has(name)) : candidateFileNames;
+
   const reads = await Promise.all(
-    candidateFileNames.map(async (name) => {
+    namesToRead.map(async (name) => {
       const path = filePath(rootDir, name);
       const content = await readFile(path);
       return content ? { content, name, path } : null;
@@ -107,7 +112,9 @@ const fileRules: FileRule[] = [
   {
     slug: "rust",
     fileNames: ["Cargo.toml"],
-    matches: (file) => /\[package\]/i.test(file.content)
+    // A workspace-root Cargo.toml has [workspace] but no [package] section of its own —
+    // still unambiguously Rust, so presence alone is the fallback signal.
+    matches: (file) => containsAny(file.content, [/\[package\]/i, /\[workspace\]/i])
   },
   {
     slug: "dotnet",
@@ -122,6 +129,10 @@ const fileRules: FileRule[] = [
   {
     slug: "java",
     fileNames: ["pom.xml", "build.gradle", "build.gradle.kts"],
+    // Unlike pom.xml (always <project ...> XML), a Gradle build file is shared by
+    // Kotlin, Android, Scala and Groovy projects too — presence alone isn't safe to
+    // label "Java", so this stays content-gated. build.gradle/.kts are deliberately
+    // left out of the coarse tree detector's marker list for the same reason.
     matches: (file) => containsAny(file.content, [/<project[\s>]/i, /\bjava\b/i])
   },
   {
@@ -132,16 +143,24 @@ const fileRules: FileRule[] = [
   {
     slug: "python",
     fileNames: ["requirements.txt", "pyproject.toml", "main.py", "app.py", "server.py"],
-    matches: (file, _files, options) => file.name.endsWith(".py") || /\bpython\b/i.test(commandText(options))
+    // requirements.txt/pyproject.toml presence is already unambiguous on its own — an
+    // ordinary one with no Django/Flask import shouldn't fall through to "no framework
+    // detected" when the coarse layer already showed a Python badge for it.
+    matches: (file, _files, options) =>
+      file.name.endsWith(".py") ||
+      file.name === "requirements.txt" ||
+      file.name === "pyproject.toml" ||
+      /\bpython\b/i.test(commandText(options))
   }
 ];
 
 export async function detectFrameworkFromProjectFiles(
   readFile: ProjectFileReader,
   rootDir: null | string,
-  options: FrameworkFileDetectionOptions = {}
+  options: FrameworkFileDetectionOptions = {},
+  knownFiles?: Set<string>
 ): Promise<FrameworkIconCatalogEntry | null> {
-  const files = await readProjectFiles(readFile, rootDir);
+  const files = await readProjectFiles(readFile, rootDir, knownFiles);
   if (files.length === 0) return null;
 
   for (const rule of fileRules) {

@@ -20,6 +20,7 @@ import { FormEvent, startTransition, useCallback, useEffect, useMemo, useRef, us
 import {
   api,
   type DeploymentLog,
+  type Framework,
   type GitHubDirectory,
   type GitHubRepo,
   type RuntimeLog,
@@ -196,6 +197,7 @@ export function ServicePageShell({
   const [sourceError, setSourceError] = useState("");
   const [directoryPickerOpen, setDirectoryPickerOpen] = useState(false);
   const [settingsDirectoryNodes, setSettingsDirectoryNodes] = useState<Record<string, GitHubDirectory[]>>({});
+  const [settingsRootFramework, setSettingsRootFramework] = useState<Framework | null>(null);
   const [settingsExpandedDirectories, setSettingsExpandedDirectories] = useState<Set<string>>(new Set());
   const [settingsDirectoryError, setSettingsDirectoryError] = useState("");
   const [settingsDirectoryLoadingPaths, setSettingsDirectoryLoadingPaths] = useState<Set<string>>(new Set());
@@ -425,10 +427,11 @@ export function ServicePageShell({
     if (!settings.repoFullName || !settings.branch) return;
 
     const cacheKey = `${settings.repoFullName}:${settings.branch}:${path}`;
-    const cachedDirectories = githubDirectoriesCache.get(cacheKey);
-    if (cachedDirectories) {
+    const cached = githubDirectoriesCache.get(cacheKey);
+    if (cached) {
       startTransition(() => {
-        setSettingsDirectoryNodes((current) => ({ ...current, [path]: cachedDirectories }));
+        setSettingsDirectoryNodes((current) => ({ ...current, [path]: cached.directories }));
+        if (path === "") setSettingsRootFramework(cached.rootFramework);
       });
       return;
     }
@@ -436,10 +439,11 @@ export function ServicePageShell({
     setSettingsDirectoryLoadingPaths((current) => new Set(current).add(path));
     setSettingsDirectoryError("");
     try {
-      const nextDirectories = (await api.githubDirectories(settings.repoFullName, settings.branch, path)).directories;
-      githubDirectoriesCache.set(cacheKey, nextDirectories);
+      const response = await api.githubDirectories(settings.repoFullName, settings.branch, path);
+      githubDirectoriesCache.set(cacheKey, response);
       startTransition(() => {
-        setSettingsDirectoryNodes((current) => ({ ...current, [path]: nextDirectories }));
+        setSettingsDirectoryNodes((current) => ({ ...current, [path]: response.directories }));
+        if (path === "") setSettingsRootFramework(response.rootFramework);
       });
     } catch (issue) {
       startTransition(() => {
@@ -858,6 +862,7 @@ export function ServicePageShell({
                                     setSettings((current) => ({ ...current, branch }));
                                     setBranchMenuOpen(false);
                                     setSettingsDirectoryNodes({});
+                                    setSettingsRootFramework(null);
                                     setSettingsExpandedDirectories(new Set());
                                   }}
                                 >
@@ -1038,6 +1043,7 @@ export function ServicePageShell({
           setSourceQuery("");
           setSourceRepos([]);
           setSettingsDirectoryNodes({});
+          setSettingsRootFramework(null);
           setSettingsExpandedDirectories(new Set());
           setSettingsDirectoryError("");
         }}
@@ -1051,6 +1057,7 @@ export function ServicePageShell({
         expandedPaths={settingsExpandedDirectories}
         loadingPaths={settingsDirectoryLoadingPaths}
         errorMessage={settingsDirectoryError}
+        rootFramework={settingsRootFramework}
         onClose={() => setDirectoryPickerOpen(false)}
         onToggle={toggleSettingsDirectory}
         onSelect={(path) => setSettings((current) => ({ ...current, rootDir: path }))}
