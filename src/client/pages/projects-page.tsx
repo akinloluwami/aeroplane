@@ -1,5 +1,5 @@
-import { useNavigate } from "@tanstack/react-router";
-import { AddSquareIcon, FolderCodeIcon } from "@hugeicons/core-free-icons";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { AddSquareIcon, Activity01Icon, FolderCodeIcon } from "@hugeicons/core-free-icons";
 import { startTransition, useCallback, useEffect, useState } from "react";
 import {
   api,
@@ -196,6 +196,15 @@ export function ProjectsPage() {
                 <div className="hidden sm:block">
                   <SystemHealthPill tools={tools} />
                 </div>
+              ) : null}
+              {owner ? (
+                <Link
+                  to="/monitoring"
+                  className="inline-flex h-9 items-center justify-center gap-2 border border-zinc-800 bg-zinc-900/50 px-3 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-300 transition-colors hover:bg-zinc-800"
+                >
+                  <AppIcon icon={Activity01Icon} size={14} />
+                  <span className="hidden md:inline">Monitoring</span>
+                </Link>
               ) : null}
               <button
                 type="button"
