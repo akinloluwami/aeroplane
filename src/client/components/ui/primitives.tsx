@@ -1,6 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Globe02Icon } from "@hugeicons/core-free-icons";
-import { ReactNode, forwardRef } from "react";
+import { Globe02Icon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
+import { ReactNode, forwardRef, useState } from "react";
 import type { Framework } from "../../api";
 import { frameworkIconClassName } from "./framework-icon-colors";
 
@@ -69,6 +69,30 @@ export function FieldLabel({ children }: { children: ReactNode }) {
 
 export const FormInput = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   (props, ref) => {
+    const [showPassword, setShowPassword] = useState(false);
+    const isPassword = props.type === "password";
+
+    if (isPassword) {
+      return (
+        <div className="relative flex w-full items-center">
+          <input
+            {...props}
+            type={showPassword ? "text" : "password"}
+            ref={ref}
+            className={`h-11 w-full border border-zinc-700 bg-zinc-900 px-3 pr-11 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-[#4FB8B2]/60 ${props.className ?? ""}`}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 text-zinc-400 transition hover:text-zinc-200"
+            title={showPassword ? "Hide text" : "Show text"}
+          >
+            <AppIcon icon={showPassword ? ViewOffSlashIcon : ViewIcon} size={16} />
+          </button>
+        </div>
+      );
+    }
+
     return (
       <input
         {...props}

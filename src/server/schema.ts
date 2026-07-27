@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, real } from "drizzle-orm/sqlite-core";
 
 export const projectGroups = sqliteTable("project_groups", {
   id: text("id").primaryKey(),
@@ -36,6 +36,11 @@ export const services = sqliteTable("projects", {
   databasePublicEnabled: integer("database_public_enabled", { mode: "boolean" }).notNull().default(false),
   databasePublicHostname: text("database_public_hostname"),
   postgresLogicalReplicationEnabled: integer("postgres_logical_replication_enabled", { mode: "boolean" }).notNull().default(false),
+  autoscalingEnabled: integer("autoscaling_enabled", { mode: "boolean" }).notNull().default(false),
+  autoscalingMinCpu: real("autoscaling_min_cpu"),
+  autoscalingMaxCpu: real("autoscaling_max_cpu"),
+  autoscalingMinMem: integer("autoscaling_min_mem"),
+  autoscalingMaxMem: integer("autoscaling_max_mem"),
   status: text("status").notNull(),
   lastDeployedAt: text("last_deployed_at"),
   createdAt: text("created_at").notNull(),
