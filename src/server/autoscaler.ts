@@ -17,6 +17,9 @@ export function startAutoscalerWorker() {
 
   console.log("Starting Aeroplane autoscaler worker...");
 
+  // Tracks the last 5 CPU percentage readings per container
+  const containerCpuHistory = new Map<string, number[]>();
+
   setInterval(async () => {
     try {
       // 1. Find all services that have autoscaling enabled and are running
@@ -57,7 +60,14 @@ export function startAutoscalerWorker() {
         const stat = statsByContainer.get(containerName);
         if (!stat) continue;
 
-        const currentCpuUsage = stat.cpuPercent; // This is out of 100% per core
+        let history = containerCpuHistory.get(containerName) || [];
+        history.push(stat.cpuPercent);
+        if (history.length > 5) {
+          history.shift();
+        }
+        containerCpuHistory.set(containerName, history);
+
+        const currentCpuUsage = history.reduce((sum, val) => sum + val, 0) / history.length; // Average over the last 5 samples
         
         // Current limit inspection - docker inspect
         const inspectCmd = `docker inspect --format="{{.HostConfig.NanoCpus}}" ${containerName}`;
@@ -101,6 +111,13 @@ export function startAutoscalerWorker() {
           } catch (updateErr) {
             console.error(`[Autoscaler] Failed to update container ${containerName}:`, updateErr);
           }
+        }
+      }
+
+      // Cleanup history for containers that are no longer running
+      for (const key of containerCpuHistory.keys()) {
+        if (!statsByContainer.has(key)) {
+          containerCpuHistory.delete(key);
         }
       }
 
