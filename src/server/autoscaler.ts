@@ -79,8 +79,24 @@ export function startAutoscalerWorker() {
               currentLimits.set(name, { cpu: cpuLimit, mem: memLimit });
             }
           }
-        } catch (err) {
+        } catch (err: any) {
           console.error("Failed to inspect containers:", err);
+          if (err.stdout) {
+          
+            for (const line of err.stdout.trim().split("\\n")) {
+              const parts = line.trim().split(" ");
+              if (parts.length >= 3) {
+                const name = parts[0].replace("/", "");
+                const nanoCpus = parseInt(parts[1], 10);
+                const memBytes = parseInt(parts[2], 10);
+                const cpuLimit = nanoCpus > 0 ? nanoCpus / 1_000_000_000 : 0;
+                const memLimit = memBytes > 0 ? memBytes : 0;
+                totalAllocatedCpus += cpuLimit;
+                totalAllocatedMem += memLimit;
+                currentLimits.set(name, { cpu: cpuLimit, mem: memLimit });
+              }
+            }
+          }
         }
       }
 
