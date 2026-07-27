@@ -88,24 +88,28 @@ export function startAutoscalerWorker() {
 
         let nextLimit = currentCpuLimit || minCpu;
 
-        // Scaling Logic
-        // If usage > 80% of current limit (note: docker stats CPUPerc is 100% = 1 core)
-        // E.g., if limit is 0.5 CPU, max usage is 50%.
-        const limitPercentage = currentCpuLimit ? currentCpuLimit * 100 : 100;
+        // True CPU cores demand (100% = 1 core)
+        const trueCpuDemand = currentCpuUsage / 100;
+
+        // Current utilization relative to the allocated limit
+        const currentUtilization = currentCpuLimit ? (trueCpuDemand / currentCpuLimit) : 0;
         
-        if (currentCpuUsage > limitPercentage * 0.8) {
-          // Scale up
-          nextLimit = Math.min(maxCpu, (currentCpuLimit || 1) * 1.5);
-        } else if (currentCpuUsage < limitPercentage * 0.2) {
-          // Scale down
-          nextLimit = Math.max(minCpu, (currentCpuLimit || 1) * 0.8);
+        // Target utilization: 60%
+        const targetUtilization = 0.6;
+
+        // Only scale if utilization is too high (>80%) or too low (<20%) to avoid jitter
+        if (currentUtilization > 0.8 || currentUtilization < 0.2) {
+          nextLimit = trueCpuDemand / targetUtilization;
+          
+          // Clamp to [minCpu, maxCpu]
+          nextLimit = Math.max(minCpu, Math.min(maxCpu, nextLimit));
         }
 
         // Round to 2 decimals
         nextLimit = Math.round(nextLimit * 100) / 100;
 
         if (currentCpuLimit !== nextLimit) {
-          console.log(`[Autoscaler] Updating ${containerName} (service: ${service.name}) CPU limit: ${currentCpuLimit} -> ${nextLimit} (Usage was ${currentCpuUsage.toFixed(2)}%)`);
+          console.log(`[Autoscaler] Updating ${containerName} (service: ${service.name}) CPU limit: ${currentCpuLimit} -> ${nextLimit} (Utilization was ${(currentUtilization * 100).toFixed(1)}%)`);
           try {
             await execAsync(`docker update --cpus="${nextLimit}" ${containerName}`);
           } catch (updateErr) {
