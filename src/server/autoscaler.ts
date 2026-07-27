@@ -7,7 +7,6 @@ import * as os from "node:os";
 
 const execAsync = promisify(exec);
 
-// Parse CPU percentage from docker stats, e.g. "0.00%" -> 0
 function parseCpuPercent(cpuString: string): number {
   if (!cpuString) return 0;
   return parseFloat(cpuString.replace("%", ""));
@@ -23,27 +22,22 @@ function parseMemoryBytes(memString: string): number {
 }
 
 export function startAutoscalerWorker() {
-  const INTERVAL_MS = 30000; // Check every 30 seconds
+  const INTERVAL_MS = 30000;
 
   console.log("Starting Aeroplane autoscaler worker...");
 
-  // Tracks the last 5 CPU percentage readings per container
   const containerCpuHistory = new Map<string, number[]>();
-  // Tracks the last 3 memory readings per container for scale-down trending
   const containerMemHistory = new Map<string, number[]>();
-  // Tracks consecutive cycles below scale-down threshold
   const containerMemScaleDownCycles = new Map<string, number>();
 
   setInterval(async () => {
     try {
-      // 1. Find all services that have autoscaling enabled and are running
       const enabledServices = await db.select()
         .from(services)
         .where(and(eq(services.autoscalingEnabled, true), eq(services.status, "active")));
 
       if (enabledServices.length === 0) return;
 
-      // 2. Fetch docker stats
       const { stdout } = await execAsync("docker stats --no-stream --format \"{{json .}}\"");
       if (!stdout.trim()) return;
 
@@ -69,14 +63,13 @@ export function startAutoscalerWorker() {
       const currentLimits = new Map<string, { cpu: number; mem: number }>();
 
       if (runningContainers.length > 0) {
-        // Fetch limits for all running containers in one go
         const inspectCmd = `docker inspect --format="{{.Name}} {{.HostConfig.NanoCpus}} {{.HostConfig.Memory}}" ${runningContainers.join(" ")}`;
         try {
           const { stdout: inspectOut } = await execAsync(inspectCmd);
           for (const line of inspectOut.trim().split("\n")) {
             const parts = line.trim().split(" ");
             if (parts.length >= 3) {
-              const name = parts[0].replace("/", ""); // remove leading slash
+              const name = parts[0].replace("/", "");
               const nanoCpus = parseInt(parts[1], 10);
               const memBytes = parseInt(parts[2], 10);
               const cpuLimit = nanoCpus > 0 ? nanoCpus / 1_000_000_000 : 0;
@@ -92,11 +85,10 @@ export function startAutoscalerWorker() {
       }
 
       const TOTAL_HOST_CORES = os.cpus().length;
-      const MAX_GLOBAL_CPU_LIMIT = TOTAL_HOST_CORES * 1.2; // 20% overprovisioning
+      const MAX_GLOBAL_CPU_LIMIT = TOTAL_HOST_CORES * 1.2;
       const TOTAL_HOST_MEM = os.totalmem();
-      const MAX_GLOBAL_MEM_LIMIT = TOTAL_HOST_MEM * 0.9; // Leave 10% for OS
+      const MAX_GLOBAL_MEM_LIMIT = TOTAL_HOST_MEM * 0.9;
 
-      // 3. Evaluate each enabled service
       for (const service of enabledServices) {
         const activeDeployment = await db.query.deployments.findFirst({
           where: and(eq(deployments.serviceId, service.id), eq(deployments.status, "running")),
@@ -116,59 +108,48 @@ export function startAutoscalerWorker() {
         }
         containerCpuHistory.set(containerName, history);
 
-        const currentCpuUsage = history.reduce((sum, val) => sum + val, 0) / history.length; // Average over the last 5 samples
+        const currentCpuUsage = history.reduce((sum, val) => sum + val, 0) / history.length;
         
         const limitVal = currentLimits.get(containerName);
         const currentCpuLimit = limitVal ? (limitVal.cpu > 0 ? limitVal.cpu : null) : null;
 
-        // Configuration
         const minCpu = service.autoscalingMinCpu || 0.1;
         const maxCpu = service.autoscalingMaxCpu || 2.0;
 
         let nextLimit = currentCpuLimit || minCpu;
 
-        // True CPU cores demand (100% = 1 core)
         const trueCpuDemand = currentCpuUsage / 100;
 
-        // Current utilization relative to the allocated limit
         const currentUtilization = currentCpuLimit ? (trueCpuDemand / currentCpuLimit) : 0;
         
-        // Target utilization: 60%
         const targetUtilization = 0.6;
 
-        // Only scale if utilization is too high (>80%) or too low (<20%) to avoid jitter
         if (currentUtilization > 0.8 || currentUtilization < 0.2) {
           nextLimit = trueCpuDemand / targetUtilization;
           
-          // Clamp to [minCpu, maxCpu]
           nextLimit = Math.max(minCpu, Math.min(maxCpu, nextLimit));
         }
 
-        // Host-level headroom check (Hard allocation cap)
         const currentLimitResolved = currentCpuLimit || minCpu;
         if (nextLimit > currentLimitResolved) {
-          // Scale-up scenario
           const requestedIncrease = nextLimit - currentLimitResolved;
           const headroom = Math.max(0, MAX_GLOBAL_CPU_LIMIT - totalAllocatedCpus);
           
           if (headroom === 0) {
             console.log(`[Autoscaler] Denied scale-up for ${containerName}. Host is fully allocated (${totalAllocatedCpus.toFixed(1)} / ${MAX_GLOBAL_CPU_LIMIT.toFixed(1)} CPUs)`);
-            nextLimit = currentLimitResolved; // Cancel scale-up
+            nextLimit = currentLimitResolved;
           } else if (requestedIncrease > headroom) {
             console.log(`[Autoscaler] Clamping scale-up for ${containerName} due to host limits. Requested: +${requestedIncrease.toFixed(2)}, Available: +${headroom.toFixed(2)}`);
-            nextLimit = currentLimitResolved + headroom; // Clamp scale-up to remaining headroom
+            nextLimit = currentLimitResolved + headroom;
           }
         }
 
-        // Update running tally for subsequent projects in the loop
         if (nextLimit !== currentLimitResolved) {
           totalAllocatedCpus += (nextLimit - currentLimitResolved);
         }
 
-        // Round to 2 decimals
         nextLimit = Math.round(nextLimit * 100) / 100;
 
-        // Memory Autoscaling Logic
         const minMemBytes = (service.autoscalingMinMem || 256) * 1024 * 1024;
         const maxMemBytes = (service.autoscalingMaxMem || 2048) * 1024 * 1024;
         
@@ -182,20 +163,15 @@ export function startAutoscalerWorker() {
         const currentMemLimit = limitVal && limitVal.mem > 0 ? limitVal.mem : minMemBytes;
         let nextMemLimit = currentMemLimit;
         
-        // Target 60% utilization: newLimit = currentUsage / targetUtilization
         const targetMemUtilization = 0.6;
         const proposedMemLimit = stat.memUsageBytes / targetMemUtilization;
 
-        // Is it a scale up?
         if (proposedMemLimit > currentMemLimit) {
-          // Reset scale down cycles
           containerMemScaleDownCycles.set(containerName, 0);
           
           nextMemLimit = proposedMemLimit;
-          // Clamp to max
           nextMemLimit = Math.min(maxMemBytes, nextMemLimit);
           
-          // Host-level headroom check for memory
           const requestedIncrease = nextMemLimit - currentMemLimit;
           const headroom = Math.max(0, MAX_GLOBAL_MEM_LIMIT - totalAllocatedMem);
           if (headroom === 0) {
@@ -206,16 +182,13 @@ export function startAutoscalerWorker() {
             nextMemLimit = currentMemLimit + headroom;
           }
         } else {
-          // Is it a scale down?
-          // Check hybrid buffer
-          const requiredBuffer = Math.max(0.20 * stat.memUsageBytes, 75 * 1024 * 1024); // 20% or 75MB
+          const requiredBuffer = Math.max(0.20 * stat.memUsageBytes, 75 * 1024 * 1024);
           if (stat.memUsageBytes + requiredBuffer < proposedMemLimit) {
             let scaleDownCycles = containerMemScaleDownCycles.get(containerName) || 0;
             scaleDownCycles++;
             containerMemScaleDownCycles.set(containerName, scaleDownCycles);
             
             if (scaleDownCycles >= 3) {
-              // Check for upward trend
               let upwardTrend = false;
               if (memHistory.length === 3) {
                 if (memHistory[2] > memHistory[1] && memHistory[1] > memHistory[0]) {
@@ -224,7 +197,6 @@ export function startAutoscalerWorker() {
               }
               
               if (!upwardTrend) {
-                // Re-fetch current memory usage before issuing update
                 try {
                   const { stdout: freshStats } = await execAsync(`docker stats --no-stream --format "{{json .}}" ${containerName}`);
                   if (freshStats.trim()) {
@@ -250,7 +222,6 @@ export function startAutoscalerWorker() {
           }
         }
         
-        // Make sure memory is an integer
         nextMemLimit = Math.floor(nextMemLimit);
 
         if (nextLimit !== currentLimitResolved || nextMemLimit !== currentMemLimit) {
@@ -263,7 +234,6 @@ export function startAutoscalerWorker() {
         }
       }
 
-      // Cleanup history for containers that are no longer running
       for (const key of containerCpuHistory.keys()) {
         if (!statsByContainer.has(key)) {
           containerCpuHistory.delete(key);
