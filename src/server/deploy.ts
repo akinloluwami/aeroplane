@@ -1413,6 +1413,10 @@ async function runDeployment(deployment: Deployment, service: Service) {
       ];
       if (service.autoscalingEnabled) {
         dockerArgs.push(`--cpus=${service.autoscalingMinCpu || 0.1}`);
+        if (service.autoscalingMinMem) {
+          dockerArgs.push(`--memory=${service.autoscalingMinMem}m`);
+          dockerArgs.push(`--memory-swap=${service.autoscalingMinMem}m`);
+        }
       }
       for (const [key, value] of Object.entries(env)) {
         dockerArgs.push("--env", `${key}=${value}`);
@@ -1477,6 +1481,10 @@ async function runDeployment(deployment: Deployment, service: Service) {
     ];
     if (service.autoscalingEnabled) {
       dockerArgs.push(`--cpus=${service.autoscalingMinCpu || 0.1}`);
+      if (service.autoscalingMinMem) {
+        dockerArgs.push(`--memory=${service.autoscalingMinMem}m`);
+        dockerArgs.push(`--memory-swap=${service.autoscalingMinMem}m`);
+      }
     }
     for (const [key, value] of Object.entries({ ...env, PORT: String(runtimePort) })) {
       dockerArgs.push("--env", `${key}=${value}`);

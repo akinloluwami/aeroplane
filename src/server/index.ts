@@ -267,7 +267,9 @@ const serviceSettingsSchema = z.object({
   sourceCode: z.string().optional(),
   autoscalingEnabled: z.boolean().optional().default(false),
   autoscalingMinCpu: z.coerce.number().min(0.1).optional(),
-  autoscalingMaxCpu: z.coerce.number().min(0.1).optional()
+  autoscalingMaxCpu: z.coerce.number().min(0.1).optional(),
+  autoscalingMinMem: z.coerce.number().min(0.1).optional(),
+  autoscalingMaxMem: z.coerce.number().min(0.1).optional()
 });
 
 const createProjectSchema = z.object({
@@ -506,7 +508,9 @@ const updateServiceSchema = z.object({
   postgresLogicalReplicationEnabled: z.boolean().optional(),
   autoscalingEnabled: z.boolean().optional(),
   autoscalingMinCpu: z.coerce.number().min(0.1).optional().nullable(),
-  autoscalingMaxCpu: z.coerce.number().min(0.1).optional().nullable()
+  autoscalingMaxCpu: z.coerce.number().min(0.1).optional().nullable(),
+  autoscalingMinMem: z.coerce.number().min(0.1).optional().nullable(),
+  autoscalingMaxMem: z.coerce.number().min(0.1).optional().nullable()
 });
 const functionSourceUpdateSchema = z.object({
   runtime: z.enum(functionRuntimes).optional(),
@@ -933,6 +937,8 @@ function createServiceRecord(projectId: string, input: z.infer<typeof createServ
     autoscalingEnabled: input.autoscalingEnabled ?? false,
     autoscalingMinCpu: input.autoscalingMinCpu ?? null,
     autoscalingMaxCpu: input.autoscalingMaxCpu ?? null,
+    autoscalingMinMem: input.autoscalingMinMem ?? null,
+    autoscalingMaxMem: input.autoscalingMaxMem ?? null,
     status: "idle",
     lastDeployedAt: null,
     createdAt: timestamp,

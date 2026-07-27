@@ -58,14 +58,11 @@ export function FunctionSourcePanel({
   }, [draft.runtime, draft.sourceCode, source]);
 
   async function saveSource() {
-    let nextSource: FunctionSource | null = null;
     await doAction("source", async () => {
       const result = await api.updateFunctionSource(serviceId, draft);
-      nextSource = result.source;
+      setSource(result.source);
+      setDraft({ runtime: result.source.runtime, sourceCode: result.source.sourceCode });
     });
-    if (!nextSource) return;
-    setSource(nextSource);
-    setDraft({ runtime: nextSource.runtime, sourceCode: nextSource.sourceCode });
   }
 
   if (loading) {

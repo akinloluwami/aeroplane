@@ -288,6 +288,14 @@ if (!hasColumn("projects", "autoscaling_max_cpu")) {
   sqlite.exec("ALTER TABLE projects ADD COLUMN autoscaling_max_cpu INTEGER");
 }
 
+if (!hasColumn("projects", "autoscaling_min_mem")) {
+  sqlite.exec("ALTER TABLE projects ADD COLUMN autoscaling_min_mem INTEGER");
+}
+
+if (!hasColumn("projects", "autoscaling_max_mem")) {
+  sqlite.exec("ALTER TABLE projects ADD COLUMN autoscaling_max_mem INTEGER");
+}
+
 if (!hasColumn("database_backups", "trigger")) {
   sqlite.exec("ALTER TABLE database_backups ADD COLUMN trigger TEXT NOT NULL DEFAULT 'manual'");
 }

@@ -43,6 +43,11 @@ export type Service = {
   databasePublicEnabled: boolean;
   databasePublicHostname: null | string;
   postgresLogicalReplicationEnabled: boolean;
+  autoscalingEnabled: boolean;
+  autoscalingMinCpu: number | null;
+  autoscalingMaxCpu: number | null;
+  autoscalingMinMem: number | null;
+  autoscalingMaxMem: number | null;
   status: string;
   reachable: boolean;
   localUrl: string;

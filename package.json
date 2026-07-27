@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n api,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:server": "tsx watch src/server/index.ts",
+    "dev:server": "tsx src/server/index.ts",
     "dev:client": "vite --host 0.0.0.0",
     "download:framework-icons": "tsx scripts/download-framework-icons.ts --force",
     "build": "vite build && tsc -p tsconfig.server.json",
