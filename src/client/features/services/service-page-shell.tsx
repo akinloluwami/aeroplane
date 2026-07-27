@@ -539,7 +539,9 @@ export function ServicePageShell({
         postgresLogicalReplicationEnabled: isDatabase ? submittedSettings.postgresLogicalReplicationEnabled : undefined,
         autoscalingEnabled: submittedSettings.autoscalingEnabled,
         autoscalingMinCpu: submittedSettings.autoscalingMinCpu,
-        autoscalingMaxCpu: submittedSettings.autoscalingMaxCpu
+        autoscalingMaxCpu: submittedSettings.autoscalingMaxCpu,
+        autoscalingMinMem: submittedSettings.autoscalingMinMem,
+        autoscalingMaxMem: submittedSettings.autoscalingMaxMem
       });
     });
   }
