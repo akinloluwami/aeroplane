@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 import { db } from "./db.js";
 import { services, deployments } from "./schema.js";
 import { eq, and } from "drizzle-orm";
+import * as os from "node:os";
 
 const execAsync = promisify(exec);
 
@@ -35,6 +36,7 @@ export function startAutoscalerWorker() {
 
       const lines = stdout.trim().split("\n");
       const statsByContainer = new Map<string, { cpuPercent: number }>();
+      const runningContainers: string[] = [];
 
       for (const line of lines) {
         if (!line.trim()) continue;
@@ -42,10 +44,37 @@ export function startAutoscalerWorker() {
           const stat = JSON.parse(line);
           const cpu = parseCpuPercent(stat.CPUPerc);
           statsByContainer.set(stat.Name, { cpuPercent: cpu });
+          runningContainers.push(stat.Name);
         } catch (err) {
           console.error("Failed to parse docker stats line:", err);
         }
       }
+
+      let totalAllocatedCpus = 0;
+      const currentLimits = new Map<string, number>();
+
+      if (runningContainers.length > 0) {
+        // Fetch limits for all running containers in one go
+        const inspectCmd = `docker inspect --format="{{.Name}} {{.HostConfig.NanoCpus}}" ${runningContainers.join(" ")}`;
+        try {
+          const { stdout: inspectOut } = await execAsync(inspectCmd);
+          for (const line of inspectOut.trim().split("\n")) {
+            const parts = line.trim().split(" ");
+            if (parts.length === 2) {
+              const name = parts[0].replace("/", ""); // remove leading slash
+              const nanoCpus = parseInt(parts[1], 10);
+              const limit = nanoCpus > 0 ? nanoCpus / 1_000_000_000 : 0;
+              totalAllocatedCpus += limit;
+              currentLimits.set(name, limit);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to inspect containers:", err);
+        }
+      }
+
+      const TOTAL_HOST_CORES = os.cpus().length;
+      const MAX_GLOBAL_CPU_LIMIT = TOTAL_HOST_CORES * 1.2; // 20% overprovisioning
 
       // 3. Evaluate each enabled service
       for (const service of enabledServices) {
@@ -69,18 +98,8 @@ export function startAutoscalerWorker() {
 
         const currentCpuUsage = history.reduce((sum, val) => sum + val, 0) / history.length; // Average over the last 5 samples
         
-        // Current limit inspection - docker inspect
-        const inspectCmd = `docker inspect --format="{{.HostConfig.NanoCpus}}" ${containerName}`;
-        let nanoCpus = 0;
-        try {
-          const { stdout: inspectOut } = await execAsync(inspectCmd);
-          nanoCpus = parseInt(inspectOut.trim(), 10);
-        } catch (err) {
-          continue;
-        }
-        
-        // 1 CPU = 1_000_000_000 NanoCpus. If 0, it means no limit.
-        const currentCpuLimit = nanoCpus > 0 ? nanoCpus / 1_000_000_000 : null;
+        const limitVal = currentLimits.get(containerName);
+        const currentCpuLimit = limitVal ? (limitVal > 0 ? limitVal : null) : null;
 
         // Configuration
         const minCpu = service.autoscalingMinCpu || 0.1;
@@ -103,6 +122,27 @@ export function startAutoscalerWorker() {
           
           // Clamp to [minCpu, maxCpu]
           nextLimit = Math.max(minCpu, Math.min(maxCpu, nextLimit));
+        }
+
+        // Host-level headroom check (Hard allocation cap)
+        const currentLimitResolved = currentCpuLimit || minCpu;
+        if (nextLimit > currentLimitResolved) {
+          // Scale-up scenario
+          const requestedIncrease = nextLimit - currentLimitResolved;
+          const headroom = Math.max(0, MAX_GLOBAL_CPU_LIMIT - totalAllocatedCpus);
+          
+          if (headroom === 0) {
+            console.log(`[Autoscaler] Denied scale-up for ${containerName}. Host is fully allocated (${totalAllocatedCpus.toFixed(1)} / ${MAX_GLOBAL_CPU_LIMIT.toFixed(1)} CPUs)`);
+            nextLimit = currentLimitResolved; // Cancel scale-up
+          } else if (requestedIncrease > headroom) {
+            console.log(`[Autoscaler] Clamping scale-up for ${containerName} due to host limits. Requested: +${requestedIncrease.toFixed(2)}, Available: +${headroom.toFixed(2)}`);
+            nextLimit = currentLimitResolved + headroom; // Clamp scale-up to remaining headroom
+          }
+        }
+
+        // Update running tally for subsequent projects in the loop
+        if (nextLimit !== currentLimitResolved) {
+          totalAllocatedCpus += (nextLimit - currentLimitResolved);
         }
 
         // Round to 2 decimals
