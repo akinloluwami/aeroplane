@@ -53,6 +53,9 @@ CREATE TABLE IF NOT EXISTS projects (
   database_public_enabled INTEGER NOT NULL DEFAULT 0,
   database_public_hostname TEXT,
   postgres_logical_replication_enabled INTEGER NOT NULL DEFAULT 0,
+  autoscaling_enabled INTEGER NOT NULL DEFAULT 0,
+  autoscaling_min_cpu INTEGER,
+  autoscaling_max_cpu INTEGER,
   status TEXT NOT NULL,
   last_deployed_at TEXT,
   created_at TEXT NOT NULL,
@@ -271,6 +274,18 @@ if (!hasColumn("projects", "dockerfile_path")) {
 
 if (!hasColumn("projects", "detected_build_method")) {
   sqlite.exec("ALTER TABLE projects ADD COLUMN detected_build_method TEXT");
+}
+
+if (!hasColumn("projects", "autoscaling_enabled")) {
+  sqlite.exec("ALTER TABLE projects ADD COLUMN autoscaling_enabled INTEGER NOT NULL DEFAULT 0");
+}
+
+if (!hasColumn("projects", "autoscaling_min_cpu")) {
+  sqlite.exec("ALTER TABLE projects ADD COLUMN autoscaling_min_cpu INTEGER");
+}
+
+if (!hasColumn("projects", "autoscaling_max_cpu")) {
+  sqlite.exec("ALTER TABLE projects ADD COLUMN autoscaling_max_cpu INTEGER");
 }
 
 if (!hasColumn("database_backups", "trigger")) {

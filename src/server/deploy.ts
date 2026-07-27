@@ -909,6 +909,9 @@ async function runDeployment(deployment: Deployment, service: Service) {
       if (dbType === "clickhouse") {
         dockerArgs.push("--ulimit", "nofile=262144:262144");
       }
+      if (service.autoscalingEnabled) {
+        dockerArgs.push(`--cpus=${service.autoscalingMinCpu || 0.1}`);
+      }
       for (const [key, value] of Object.entries(env)) {
         dockerArgs.push("--env", `${key}=${value}`);
       }
@@ -1028,6 +1031,9 @@ async function runDeployment(deployment: Deployment, service: Service) {
           containerName,
           ...runtimeNetworkArgs(service)
         ];
+        if (service.autoscalingEnabled) {
+          dockerArgs.push(`--cpus=${service.autoscalingMinCpu || 0.1}`);
+        }
         for (const [key, value] of Object.entries(env)) {
           dockerArgs.push("--env", `${key}=${value}`);
         }
@@ -1081,6 +1087,9 @@ async function runDeployment(deployment: Deployment, service: Service) {
         "-p",
         `127.0.0.1:${tempPort}:${runtimePort}`
       ];
+      if (service.autoscalingEnabled) {
+        dockerArgs.push(`--cpus=${service.autoscalingMinCpu || 0.1}`);
+      }
       for (const [key, value] of Object.entries({ ...env, PORT: String(runtimePort) })) {
         dockerArgs.push("--env", `${key}=${value}`);
       }
@@ -1402,6 +1411,9 @@ async function runDeployment(deployment: Deployment, service: Service) {
         containerName,
         ...runtimeNetworkArgs(service)
       ];
+      if (service.autoscalingEnabled) {
+        dockerArgs.push(`--cpus=${service.autoscalingMinCpu || 0.1}`);
+      }
       for (const [key, value] of Object.entries(env)) {
         dockerArgs.push("--env", `${key}=${value}`);
       }
@@ -1463,6 +1475,9 @@ async function runDeployment(deployment: Deployment, service: Service) {
       "-p",
       `127.0.0.1:${tempPort}:${runtimePort}`
     ];
+    if (service.autoscalingEnabled) {
+      dockerArgs.push(`--cpus=${service.autoscalingMinCpu || 0.1}`);
+    }
     for (const [key, value] of Object.entries({ ...env, PORT: String(runtimePort) })) {
       dockerArgs.push("--env", `${key}=${value}`);
     }

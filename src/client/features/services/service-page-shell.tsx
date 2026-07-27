@@ -39,6 +39,7 @@ import { DirectoryPickerModal } from "../../components/modals/directory-picker";
 import { SourcePickerModal } from "../../components/modals/source-picker";
 import { TransferServiceModal } from "../../components/modals/transfer-service-modal";
 import { ConfirmationDialog } from "../../components/modals/confirmation-dialog";
+import { Checkbox } from "../../components/ui/checkbox";
 import { DatabaseServiceSettingsPanel } from "../../components/modals/database-service-settings-panel";
 import { DockerImageServiceSettingsPanel } from "../../components/modals/docker-image-service-settings-panel";
 import { FunctionServiceSettingsPanel } from "../../components/modals/function-service-settings-panel";
@@ -87,6 +88,9 @@ type ServiceSettingsState = {
   databasePublicEnabled: boolean;
   databasePublicHostname: string;
   postgresLogicalReplicationEnabled: boolean;
+  autoscalingEnabled: boolean;
+  autoscalingMinCpu: number | null;
+  autoscalingMaxCpu: number | null;
 };
 
 function formValue(form: HTMLFormElement, name: string, fallback: string) {
@@ -118,7 +122,10 @@ function settingsFromService(service: Service): ServiceSettingsState {
     internalPort: service.internalPort,
     databasePublicEnabled: service.databasePublicEnabled,
     databasePublicHostname: service.databasePublicHostname ?? "",
-    postgresLogicalReplicationEnabled: service.postgresLogicalReplicationEnabled
+    postgresLogicalReplicationEnabled: service.postgresLogicalReplicationEnabled,
+    autoscalingEnabled: service.autoscalingEnabled ?? false,
+    autoscalingMinCpu: service.autoscalingMinCpu ?? null,
+    autoscalingMaxCpu: service.autoscalingMaxCpu ?? null
   };
 }
 
@@ -183,7 +190,10 @@ export function ServicePageShell({
     internalPort: 8080,
     databasePublicEnabled: true,
     databasePublicHostname: "",
-    postgresLogicalReplicationEnabled: false
+    postgresLogicalReplicationEnabled: false,
+    autoscalingEnabled: false,
+    autoscalingMinCpu: null,
+    autoscalingMaxCpu: null
   });
   const [settingsBranches, setSettingsBranches] = useState<string[]>([]);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
@@ -520,7 +530,10 @@ export function ServicePageShell({
         internalPort: Number(submittedSettings.internalPort),
         databasePublicEnabled: isDatabase ? true : undefined,
         databasePublicHostname: isDatabase ? submittedSettings.databasePublicHostname || undefined : undefined,
-        postgresLogicalReplicationEnabled: isDatabase ? submittedSettings.postgresLogicalReplicationEnabled : undefined
+        postgresLogicalReplicationEnabled: isDatabase ? submittedSettings.postgresLogicalReplicationEnabled : undefined,
+        autoscalingEnabled: submittedSettings.autoscalingEnabled,
+        autoscalingMinCpu: submittedSettings.autoscalingMinCpu,
+        autoscalingMaxCpu: submittedSettings.autoscalingMaxCpu
       });
     });
   }
@@ -957,6 +970,32 @@ export function ServicePageShell({
                         )}
                       </>
                     )}
+                    
+                    <div className="xl:col-span-2 border-t border-zinc-800 pt-5 mt-2">
+                      <div className="mb-4">
+                        <Checkbox
+                          checked={settings.autoscalingEnabled}
+                          label="Enable Autoscaling"
+                          onChange={(checked) => setSettings((current) => ({ ...current, autoscalingEnabled: checked }))}
+                        >
+                          <span className="text-sm text-zinc-400 block mt-1">Automatically adjust CPU resources based on traffic.</span>
+                        </Checkbox>
+                      </div>
+                      
+                      {settings.autoscalingEnabled && (
+                        <div className="grid gap-5 md:grid-cols-2">
+                          <div>
+                            <FieldLabel>Min CPU (e.g. 0.1)</FieldLabel>
+                            <FormInput type="number" step="0.1" value={settings.autoscalingMinCpu ?? ""} onChange={(event) => setSettings((current) => ({ ...current, autoscalingMinCpu: event.target.value ? Number(event.target.value) : null }))} placeholder="0.1" />
+                          </div>
+                          <div>
+                            <FieldLabel>Max CPU (e.g. 2.0)</FieldLabel>
+                            <FormInput type="number" step="0.1" value={settings.autoscalingMaxCpu ?? ""} onChange={(event) => setSettings((current) => ({ ...current, autoscalingMaxCpu: event.target.value ? Number(event.target.value) : null }))} placeholder="2.0" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                   </div>
 
                   <div className="flex justify-between gap-3 border-t border-zinc-800 pt-5">

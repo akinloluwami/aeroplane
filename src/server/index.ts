@@ -19,6 +19,7 @@ import { config } from "./config.js";
 import { isPostgresFamilyDatabase } from "./database-engine.js";
 import { abortDeployment, allocateHostPort, containerNameForService, enqueueDeployment, getServiceById, removeServiceRuntime, startDeployWorker, staticSiteDirForService } from "./deploy.js";
 import { db, nowIso } from "./db.js";
+import { startAutoscalerWorker } from "./autoscaler.js";
 import { normalizeServiceBuildMethod, serviceBuildMethods } from "./dockerfile-build.js";
 import { detectFramework, detectFrameworkPreview } from "./frameworks.js";
 import { frameworkIconAsset, frameworkIconUrl, prewarmFrameworkIconCache } from "./framework-icons.js";
@@ -263,7 +264,10 @@ const serviceSettingsSchema = z.object({
   databasePublicHostname: publicHostnameSchema,
   postgresLogicalReplicationEnabled: z.boolean().optional().default(true),
   functionRuntime: z.enum(functionRuntimes).optional(),
-  sourceCode: z.string().optional()
+  sourceCode: z.string().optional(),
+  autoscalingEnabled: z.boolean().optional().default(false),
+  autoscalingMinCpu: z.coerce.number().min(0.1).optional(),
+  autoscalingMaxCpu: z.coerce.number().min(0.1).optional()
 });
 
 const createProjectSchema = z.object({
@@ -499,7 +503,10 @@ const updateServiceSchema = z.object({
   internalPort: z.coerce.number().int().min(1).max(65535).optional(),
   databasePublicEnabled: z.boolean().optional(),
   databasePublicHostname: publicHostnameSchema,
-  postgresLogicalReplicationEnabled: z.boolean().optional()
+  postgresLogicalReplicationEnabled: z.boolean().optional(),
+  autoscalingEnabled: z.boolean().optional(),
+  autoscalingMinCpu: z.coerce.number().min(0.1).optional().nullable(),
+  autoscalingMaxCpu: z.coerce.number().min(0.1).optional().nullable()
 });
 const functionSourceUpdateSchema = z.object({
   runtime: z.enum(functionRuntimes).optional(),
@@ -923,6 +930,9 @@ function createServiceRecord(projectId: string, input: z.infer<typeof createServ
     databasePublicEnabled: isDatabase,
     databasePublicHostname,
     postgresLogicalReplicationEnabled: isDatabase && isPostgresFamilyDatabase(dbType) && input.postgresLogicalReplicationEnabled,
+    autoscalingEnabled: input.autoscalingEnabled ?? false,
+    autoscalingMinCpu: input.autoscalingMinCpu ?? null,
+    autoscalingMaxCpu: input.autoscalingMaxCpu ?? null,
     status: "idle",
     lastDeployedAt: null,
     createdAt: timestamp,
@@ -3577,6 +3587,7 @@ void writeAndReloadCaddy().catch((error) => {
 });
 startDatabaseBackupScheduler();
 startDeployWorker();
+startAutoscalerWorker();
 void prewarmFrameworkIconCache().catch((error) => {
   console.error("Failed to prewarm framework icon cache:", error);
 });
