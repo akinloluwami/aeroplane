@@ -17,8 +17,11 @@ import { AppIcon } from "../components/ui/primitives";
 import { CreateServiceModal } from "../components/modals/create-service-modal";
 import { DeleteProjectModal } from "../components/modals/delete-project-modal";
 import { EditProjectModal } from "../features/projects/edit-project-modal";
-import { ProjectPageSkeleton } from "../features/projects/project-page-skeleton";
 import { ProjectPageToolbar } from "../features/projects/project-page-toolbar";
+import {
+  forceProjectRouteLoaderPreview,
+  ProjectRouteLoader
+} from "../features/projects/project-route-loader";
 import { ProjectServiceCard } from "../features/projects/project-service-card";
 import { ProjectsDashboardSidebar } from "../features/projects/projects-dashboard-sidebar";
 import type { ServiceFormPayload } from "../features/services/service-form-types";
@@ -195,8 +198,8 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
 
           <section className="min-w-0 bg-zinc-950">
             <div className="mx-auto w-full max-w-[1680px] px-5 pb-20 pt-6 sm:px-8 lg:px-10">
-              {loading || (!currentProject && !error) ? (
-                <ProjectPageSkeleton />
+              {forceProjectRouteLoaderPreview || loading || (!currentProject && !error) ? (
+                <ProjectRouteLoader label="Loading project" />
               ) : (
                 <>
                   <header className="border-b border-white/10 pb-6">
