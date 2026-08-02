@@ -78,3 +78,47 @@ input {
     transform: translateX(100%);
   }
 }
+
+.project-route-loader-plane {
+  offset-distance: 0%;
+  animation: project-route-flight 2.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+.project-route-loader-path {
+  animation: project-route-dashes 1.2s linear infinite;
+}
+
+@keyframes project-route-flight {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes project-route-dashes {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-route-loader-plane {
+    animation: none;
+    offset-distance: 62%;
+    opacity: 1;
+  }
+
+  .project-route-loader-path {
+    animation: none;
+  }
+}
