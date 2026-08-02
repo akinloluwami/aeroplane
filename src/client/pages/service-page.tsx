@@ -10,10 +10,7 @@ import {
 import { api, type ProjectDetail, type ToolCheck } from "../api";
 import { useAuthStatus } from "../components/auth/auth-context";
 import { ServicePageShell } from "../features/services/service-page-shell";
-import {
-  forceProjectRouteLoaderPreview,
-  ProjectRouteLoader
-} from "../features/projects/project-route-loader";
+import { ProjectRouteLoader } from "../features/projects/project-route-loader";
 import { ProjectsDashboardSidebar } from "../features/projects/projects-dashboard-sidebar";
 import {
   routeSegmentToServiceTab,
@@ -136,10 +133,6 @@ export function ServicePage({
       to: "/$projectSlug/$serviceSlug",
       params: { projectSlug: nextProjectSlug, serviceSlug: nextServiceSlug },
     });
-  }
-
-  if (forceProjectRouteLoaderPreview) {
-    return <ProjectRouteLoader label="Loading service" fullPage />;
   }
 
   if (error) {
