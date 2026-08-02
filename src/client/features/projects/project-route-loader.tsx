@@ -2,8 +2,6 @@ import { DeployPlaneIcon } from "../../components/icons/deploy-plane-icon";
 
 const flightPath = "M 18 96 C 68 18, 124 120, 174 54 S 245 20, 270 67";
 
-export const forceProjectRouteLoaderPreview = true;
-
 export function ProjectRouteLoader({
   label = "Loading project",
   fullPage = false
