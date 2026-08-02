@@ -45,7 +45,7 @@ import { formatBuildDuration } from "./service-format";
 import { RuntimeLogsPanel } from "./service-log-panels";
 import { ServiceOverviewPanel } from "./service-overview-panel";
 import { FunctionSourcePanel } from "./function-source-panel";
-import { ServicePageSkeleton } from "./service-page-skeleton";
+import { ProjectRouteLoader } from "../projects/project-route-loader";
 import { RedeployRequiredToast } from "./redeploy-required-toast";
 import { ProjectsDashboardSidebar } from "../projects/projects-dashboard-sidebar";
 import type { ServiceTab } from "./service-tabs";
@@ -645,7 +645,9 @@ export function ServicePageShell({
     }
   }, [hasSqlConsole, isDatabase, isFunction, isWorker, onTabChange, selectedTab, service]);
 
-  if (!overview && overviewLoading && !error) return <ServicePageSkeleton />;
+  if (!overview && overviewLoading && !error) {
+    return <ProjectRouteLoader label="Loading service" fullPage />;
+  }
 
   return (
     <>
