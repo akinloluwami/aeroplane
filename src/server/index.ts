@@ -17,7 +17,17 @@ import { basename, join, resolve } from "node:path";
 import { z } from "zod";
 import { config } from "./config.js";
 import { isPostgresFamilyDatabase } from "./database-engine.js";
-import { abortDeployment, allocateHostPort, containerNameForService, enqueueDeployment, getServiceById, removeServiceRuntime, startDeployWorker, staticSiteDirForService } from "./deploy.js";
+import {
+  abortDeployment,
+  allocateHostPort,
+  containerNameForService,
+  enqueueDeployment,
+  getServiceById,
+  removeProjectRuntimeNetwork,
+  removeServiceRuntime,
+  startDeployWorker,
+  staticSiteDirForService
+} from "./deploy.js";
 import { db, nowIso } from "./db.js";
 import { normalizeServiceBuildMethod, serviceBuildMethods } from "./dockerfile-build.js";
 import { detectFramework, detectFrameworkPreview } from "./frameworks.js";
@@ -3001,6 +3011,10 @@ app.delete("/api/projects/:projectId", async (c) => {
   const projectServices = getServicesForProject(project.id);
   for (const service of projectServices) {
     await removeServiceRuntime(service);
+  }
+  await removeProjectRuntimeNetwork(project.id);
+
+  for (const service of projectServices) {
     db.delete(domains).where(eq(domains.serviceId, service.id)).run();
     db.delete(envVars).where(eq(envVars.serviceId, service.id)).run();
     deleteServiceFunctionSource(service.id);
