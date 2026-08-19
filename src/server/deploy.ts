@@ -26,7 +26,11 @@ import {
   postgresTlsVolumePrepareDockerPlan,
   postgresTlsVolumeArg
 } from "./postgres-tls.js";
-import { ensureProjectRuntimeNetwork, runtimeNetworkArgs } from "./runtime-network.js";
+import {
+  ensureProjectRuntimeNetwork,
+  removeProjectRuntimeNetwork as removeDockerProjectRuntimeNetwork,
+  runtimeNetworkArgs
+} from "./runtime-network.js";
 import { railpackBuildEnv, railpackBuildEnvArgs } from "./railpack-build-env.js";
 import { saveRedisDatasetIfRunning, stopRedisContainerForReplacement } from "./redis-persistence.js";
 import { deploymentConcurrency } from "./system-settings.js";
@@ -719,6 +723,13 @@ export async function removeServiceRuntime(service: Service) {
 
     child.on("error", () => resolvePromise());
     child.on("close", () => resolvePromise());
+  });
+}
+
+export async function removeProjectRuntimeNetwork(projectId: string) {
+  await removeDockerProjectRuntimeNetwork({
+    projectId,
+    runBufferedDocker: (args) => runBufferedCommand("docker", args)
   });
 }
 
