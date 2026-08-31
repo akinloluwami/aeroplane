@@ -21,7 +21,6 @@ import {
 } from "../../api";
 import { ModalShell } from "./modal-shell";
 import { AppIcon, FieldLabel, FormInput } from "../ui/primitives";
-import { Dropdown } from "../ui/dropdown";
 import { formatRelativeTime } from "../../lib/format";
 import { githubBranchesCache, githubDirectoriesCache, githubReposCache } from "../../lib/github-cache";
 import { compareReposByLastPush, repoLastPushedAt } from "../../lib/github-repos";
@@ -39,6 +38,7 @@ import {
   type EnvironmentVariableSuggestionGroup
 } from "../../features/services/environment-variable-suggestions";
 import { parseEnvText, type ParsedEnvEntry } from "../../features/services/env-text-parser";
+import { RepositoryBranchPicker } from "./repository-branch-picker";
 
 type GitSourceMode = "github" | "url";
 
@@ -339,6 +339,7 @@ export function CreateServiceModal({
   }, [directoryNodes, form.branch, form.repoFullName, step]);
 
   function selectRepo(repo: GitHubRepo) {
+    setBranches([repo.defaultBranch]);
     setForm((current) => ({
       ...current,
       name: current.name || repo.name,
@@ -999,7 +1000,17 @@ export function CreateServiceModal({
         </div>
       ) : step === "directory" ? (
         <div className="flex min-h-full flex-col">
-          <div className="shrink-0 space-y-5">
+          <div className="grid shrink-0 gap-4 sm:grid-cols-2">
+            <RepositoryBranchPicker
+              branch={form.branch}
+              branches={branches}
+              onChange={(branch) => {
+                setForm((current) => ({ ...current, branch, rootDir: undefined }));
+                setDirectoryNodes({});
+                setExpandedDirectories(new Set());
+                setDirectoryError("");
+              }}
+            />
             <div>
               <FieldLabel>Selected directory</FieldLabel>
               <div className="flex h-9 items-center border border-white/10 px-3 font-mono text-xs text-zinc-300">
@@ -1067,17 +1078,6 @@ export function CreateServiceModal({
                   <div>
                     <FieldLabel>Service name</FieldLabel>
                     <FormInput value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="api" required variant="monochrome" className="!h-9 border-white/15 bg-black text-xs" />
-                  </div>
-                  <div>
-                    <FieldLabel>Branch</FieldLabel>
-                    <Dropdown
-                      value={form.branch}
-                      options={(branches.length === 0 ? [form.branch || "main"] : branches).map((branch) => ({ value: branch, label: branch }))}
-                      onChange={(branch) => setForm((current) => ({ ...current, branch }))}
-                      variant="monochrome"
-                      size="compact"
-                      className="[&>button]:!h-9"
-                    />
                   </div>
                   <div className="md:col-span-2">
                     <FieldLabel>Runtime mode</FieldLabel>
