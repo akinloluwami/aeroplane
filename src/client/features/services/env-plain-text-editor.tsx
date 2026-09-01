@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { EnvVar } from "../../api";
+import { EnvCodeEditor } from "./env-code-editor";
 import { formatEnvText, invalidEnvLineNumbers, parseEnvText, type ParsedEnvEntry } from "./env-text-parser";
 
 export function EnvPlainTextEditor({
@@ -29,15 +30,10 @@ export function EnvPlainTextEditor({
       <label htmlFor="plain-environment-variables" className="block text-xs text-zinc-500">
         Environment variables
       </label>
-      <textarea
-        id="plain-environment-variables"
+      <EnvCodeEditor
         value={text}
-        onChange={(event) => setText(event.target.value)}
-        placeholder={"DATABASE_URL=postgres://...\nAPI_KEY=...\nNODE_ENV=production"}
-        autoFocus
-        spellCheck={false}
+        onChange={setText}
         disabled={busy}
-        className="mt-2 h-[28rem] w-full resize-y border border-white/15 bg-white/[0.03] p-3 font-mono text-xs leading-6 text-zinc-200 outline-none transition placeholder:text-zinc-700 focus:border-white focus:ring-2 focus:ring-white/10 disabled:opacity-50"
       />
 
       <div className="mt-3 flex min-h-5 flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
