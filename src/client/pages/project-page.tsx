@@ -9,6 +9,7 @@ import {
   startTransition,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { api, type ProjectCard, type ProjectDetail, type ToolCheck } from "../api";
@@ -21,6 +22,8 @@ import { ProjectPageToolbar } from "../features/projects/project-page-toolbar";
 import { ProjectRouteLoader } from "../features/projects/project-route-loader";
 import { ProjectServiceCard } from "../features/projects/project-service-card";
 import { ProjectsDashboardSidebar } from "../features/projects/projects-dashboard-sidebar";
+import { ServiceSearch } from "../features/projects/service-search";
+import { ServiceSearchEmptyState } from "../features/projects/service-search-empty-state";
 import type { ServiceFormPayload } from "../features/services/service-form-types";
 import { serviceIsDeploying } from "../lib/deployment-status";
 import { usePageTitle } from "../lib/page-title";
@@ -40,6 +43,7 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
   const [projectForm, setProjectForm] = useState({ name: "", description: "" });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [serviceSearch, setServiceSearch] = useState("");
   const currentProject = project?.slug === projectSlug ? project : null;
   const currentUser = authStatus?.user ?? null;
   const owner = currentUser?.role === "owner";
@@ -69,6 +73,7 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
   useEffect(() => {
     setProject(null);
     setProjects([]);
+    setServiceSearch("");
     setLoading(true);
     void loadProject();
   }, [loadProject, projectSlug]);
@@ -115,6 +120,32 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
 
   const projectTitle = currentProject?.name ?? projectSlug;
   usePageTitle(projectTitle);
+
+  const visibleServices = useMemo(() => {
+    const needle = serviceSearch.trim().toLocaleLowerCase();
+    if (!currentProject || !needle) return currentProject?.services ?? [];
+
+    return currentProject.services.filter((service) =>
+      [
+        service.name,
+        service.slug,
+        service.status,
+        service.repoFullName,
+        service.repoUrl,
+        service.dockerImage,
+        service.branch,
+        service.rootDir,
+        service.primaryUrl,
+        service.localUrl,
+        service.framework?.name,
+        service.functionRuntime,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase()
+        .includes(needle),
+    );
+  }, [currentProject, serviceSearch]);
 
   async function createService(payload: ServiceFormPayload) {
     if (!currentProject) return;
@@ -279,15 +310,31 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
                         </div>
                       </section>
                     ) : currentProject ? (
-                      <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                        {currentProject.services.map((service) => (
-                          <ProjectServiceCard
-                            key={service.id}
-                            service={service}
-                            onOpen={() => navigateToServiceOverview(service.slug)}
+                      <>
+                        <ServiceSearch
+                          query={serviceSearch}
+                          resultCount={visibleServices.length}
+                          totalCount={currentProject.services.length}
+                          onQueryChange={setServiceSearch}
+                        />
+
+                        {visibleServices.length === 0 ? (
+                          <ServiceSearchEmptyState
+                            query={serviceSearch.trim()}
+                            onClear={() => setServiceSearch("")}
                           />
-                        ))}
-                      </section>
+                        ) : (
+                          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                            {visibleServices.map((service) => (
+                              <ProjectServiceCard
+                                key={service.id}
+                                service={service}
+                                onOpen={() => navigateToServiceOverview(service.slug)}
+                              />
+                            ))}
+                          </section>
+                        )}
+                      </>
                     ) : null}
                   </div>
                 </>
