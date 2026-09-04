@@ -8,7 +8,7 @@ export function ServiceCluster({ project }: { project: ProjectCard }) {
 
   return (
     <div className="border border-white/10 bg-black/30 p-2">
-      <div className="flex min-h-[150px] items-center justify-center bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-size-[18px_18px] p-5">
+      <div className="flex min-h-[104px] items-center justify-center bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-size-[18px_18px] p-3">
         <div className="flex max-w-[11.5rem] flex-wrap items-center justify-center gap-2">
           {previewServices.map((service) => (
             <div
@@ -19,7 +19,7 @@ export function ServiceCluster({ project }: { project: ProjectCard }) {
             </div>
           ))}
           {previewServices.length === 0 ? (
-            <div className="flex h-full min-h-[150px] items-center justify-center text-xs text-zinc-600">No services yet.</div>
+            <div className="flex h-full min-h-[104px] items-center justify-center text-xs text-zinc-600">No services yet.</div>
           ) : null}
           {extraCount > 0 ? (
             <div className="flex h-10 w-10 items-center justify-center border border-white/15 bg-zinc-950 font-mono text-xs tracking-[0.08em] text-zinc-400">
