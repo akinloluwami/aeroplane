@@ -1,6 +1,6 @@
 ---
-import RailwayLogo from "./railway-logo.astro";
 import RailwayImportVisual from "./railway-import-visual.astro";
+import RailwayLogo from "./railway-logo.astro";
 
 const importSteps = [
   {
@@ -28,61 +28,48 @@ const importDetails = [
 ];
 ---
 
-<section class="relative overflow-hidden border-t border-[rgba(52,56,67,0.65)] bg-[#08090c] py-24 text-[var(--aero-text)]">
-  <div
-    class="pointer-events-none absolute inset-0 [background-image:linear-gradient(rgba(255,255,255,0.026)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.026)_1px,transparent_1px)] [background-size:72px_72px]"
-    aria-hidden="true"
-  >
-  </div>
-  <div
-    class="pointer-events-none absolute inset-x-0 top-0 h-96 bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,rgba(233,61,130,0.12),transparent)]"
-    aria-hidden="true"
-  >
-  </div>
-
-  <div class="relative mx-auto grid w-[min(1180px,calc(100%_-_40px))] gap-14 lg:grid-cols-[0.92fr_0.8fr] lg:items-start">
-    <div>
-      <h2 class="font-hero m-0 max-w-[13ch] text-[clamp(2.25rem,5vw,4.8rem)] font-bold leading-none text-zinc-100">
-        Import from
-        <span class="inline-flex items-center gap-[0.18em] whitespace-nowrap">
-          Railway
-          <RailwayLogo class="h-[0.8em] w-[0.8em] shrink-0 translate-y-[0.03em]" />
+<section id="migrate" class="site-section bg-black text-white">
+  <div class="site-noise" aria-hidden="true"></div>
+  <div class="aero-container relative">
+    <header class="grid gap-7 border-b border-white/10 pb-10 lg:grid-cols-[0.78fr_1fr] lg:items-end lg:gap-20">
+      <div class="flex items-start gap-4">
+        <span class="mt-1 grid size-11 shrink-0 place-items-center border border-white/15 text-white">
+          <RailwayLogo class="size-6" />
         </span>
-      </h2>
-      <p class="mt-6 max-w-xl font-mono text-sm leading-7 text-[var(--aero-muted)]">
+        <h2 class="section-title m-0">Import from Railway</h2>
+      </div>
+      <p class="section-copy m-0">
         Move a Railway project into your self-hosted Aeroplane control plane without rebuilding the stack by hand.
         Services, variables, databases, and domains arrive as a project you can inspect and deploy.
       </p>
+    </header>
 
-      <div class="mt-10 grid gap-3">
-        {importSteps.map((step) => (
-          <article class="grid gap-4 border border-[rgba(52,56,67,0.78)] bg-[rgba(17,19,24,0.5)] p-5 sm:grid-cols-[64px_1fr]">
-            <div class="font-mono text-xs font-bold text-[#6d4158]">{step.label}</div>
-            <div>
-              <h3 class="m-0 text-xl font-semibold text-zinc-100">{step.title}</h3>
-              <p class="mt-2 max-w-2xl font-mono text-[0.82rem] leading-6 text-[var(--aero-muted)]">{step.body}</p>
-            </div>
-          </article>
-        ))}
-      </div>
+    <div class="mt-10">
+      <RailwayImportVisual />
     </div>
 
-    <div class="grid gap-5">
-      <RailwayImportVisual />
-
-      <div class="grid gap-2 border border-[rgba(52,56,67,0.78)] bg-[rgba(17,19,24,0.48)] p-5">
-        <p class="m-0 font-mono text-[0.66rem] font-bold uppercase tracking-[0.2em] text-zinc-500">
-          Included in the import
-        </p>
-        <div class="grid gap-2">
-          {importDetails.map((detail) => (
-            <div class="grid grid-cols-[auto_1fr] items-center gap-3 font-mono text-xs leading-6 text-zinc-300">
-              <span class="size-1.5 bg-[var(--aero-accent)]"></span>
+    <div class="mt-4 grid border border-white/10 bg-[#070707] lg:grid-cols-[0.8fr_1.2fr]">
+      <section class="border-b border-white/10 p-5 lg:border-b-0 lg:border-r">
+        <p class="section-label">Included in the import</p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          {importDetails.map((detail, index) => (
+            <div class="grid grid-cols-[26px_minmax(0,1fr)] items-start gap-2 text-xs leading-6 text-zinc-500">
+              <span class="font-mono text-[7px] text-zinc-800">{String(index + 1).padStart(2, "0")}</span>
               <span>{detail}</span>
             </div>
           ))}
         </div>
-      </div>
+      </section>
+
+      <section class="divide-y divide-white/10">
+        {importSteps.map((step) => (
+          <article class="grid gap-3 px-5 py-4 sm:grid-cols-[40px_170px_minmax(0,1fr)] sm:items-start">
+            <span class="font-mono text-[8px] tracking-[0.15em] text-zinc-700">{step.label}</span>
+            <h3 class="m-0 text-sm text-zinc-200">{step.title}</h3>
+            <p class="m-0 text-xs leading-6 text-zinc-600">{step.body}</p>
+          </article>
+        ))}
+      </section>
     </div>
   </div>
 </section>
