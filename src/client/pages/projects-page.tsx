@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { startTransition, useCallback, useEffect, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 import {
   api,
   type AuthUser,
@@ -17,6 +17,12 @@ import { RailwayImportModal } from "../features/integrations/railway-import-moda
 import { VercelImportModal } from "../features/integrations/vercel-import-modal";
 import { CreateProjectModal } from "../features/projects/create-project-modal";
 import { ProjectOverviewCard } from "../features/projects/project-overview-card";
+import { ProjectSearch } from "../features/projects/project-search";
+import { ProjectSearchEmptyState } from "../features/projects/project-search-empty-state";
+import {
+  readPinnedProjectIds,
+  writePinnedProjectIds,
+} from "../features/projects/pinned-projects";
 import { ProjectsDashboardHeader } from "../features/projects/projects-dashboard-header";
 import { ProjectsDashboardSidebar } from "../features/projects/projects-dashboard-sidebar";
 import { ProjectsEmptyState } from "../features/projects/projects-empty-state";
@@ -48,6 +54,8 @@ export function ProjectsPage() {
   >("closed");
   const [githubInstallOpen, setGitHubInstallOpen] = useState(false);
   const [error, setError] = useState("");
+  const [projectSearch, setProjectSearch] = useState("");
+  const [pinnedProjectIds, setPinnedProjectIds] = useState<string[]>([]);
 
   const loadProjects = useCallback(
     async (options: { showLoading?: boolean } = {}) => {
@@ -123,6 +131,10 @@ export function ProjectsPage() {
   }, [loadProjects]);
 
   useEffect(() => {
+    setPinnedProjectIds(readPinnedProjectIds());
+  }, []);
+
+  useEffect(() => {
     const hasDeployingService = projects.some((project) =>
       project.services.some((service) => serviceIsDeploying(service.status)),
     );
@@ -164,11 +176,59 @@ export function ProjectsPage() {
     });
   }
 
+  function togglePinnedProject(projectId: string) {
+    const next = pinnedProjectIds.includes(projectId)
+      ? pinnedProjectIds.filter((id) => id !== projectId)
+      : [...pinnedProjectIds, projectId];
+    writePinnedProjectIds(next);
+    setPinnedProjectIds(next);
+  }
+
   const owner = currentUser?.role === "owner";
   const serviceCount = projects.reduce(
     (total, project) => total + project.serviceCount,
     0,
   );
+  const visibleProjects = useMemo(() => {
+    const needle = projectSearch.trim().toLowerCase();
+    const filtered = needle
+      ? projects.filter((project) => {
+          const searchableText = [
+            project.name,
+            project.slug,
+            project.description,
+            ...project.services.flatMap((service) => [
+              service.name,
+              service.slug,
+              service.status,
+              service.repoFullName,
+              service.repoUrl,
+              service.dockerImage,
+              service.branch,
+              service.rootDir,
+              service.primaryUrl,
+              service.localUrl,
+              service.framework?.name,
+              service.functionRuntime,
+            ]),
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return searchableText.includes(needle);
+        })
+      : projects;
+
+    return filtered
+      .map((project, originalIndex) => ({ project, originalIndex }))
+      .sort((left, right) => {
+        const leftPinned = pinnedProjectIds.includes(left.project.id);
+        const rightPinned = pinnedProjectIds.includes(right.project.id);
+        if (leftPinned === rightPinned) return left.originalIndex - right.originalIndex;
+        return leftPinned ? -1 : 1;
+      })
+      .map(({ project }) => project);
+  }, [pinnedProjectIds, projectSearch, projects]);
 
   return (
     <>
@@ -218,18 +278,36 @@ export function ProjectsPage() {
               ) : null}
 
               <div className="mt-7">
+                {!setupLoading && projects.length > 0 ? (
+                  <div className="mb-5">
+                    <ProjectSearch
+                      query={projectSearch}
+                      resultCount={visibleProjects.length}
+                      totalCount={projects.length}
+                      onQueryChange={setProjectSearch}
+                    />
+                  </div>
+                ) : null}
+
                 {setupLoading ? (
                   <ProjectsGridSkeleton />
                 ) : projects.length === 0 ? (
                   <ProjectsEmptyState onCreate={() => setCreateOpen(true)} />
+                ) : visibleProjects.length === 0 ? (
+                  <ProjectSearchEmptyState
+                    query={projectSearch.trim()}
+                    onClear={() => setProjectSearch("")}
+                  />
                 ) : (
-                  <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                    {projects.map((project, index) => (
+                  <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {visibleProjects.map((project, index) => (
                       <ProjectOverviewCard
                         key={project.id}
                         project={project}
                         index={index}
+                        pinned={pinnedProjectIds.includes(project.id)}
                         onOpen={() => openProject(project)}
+                        onTogglePin={() => togglePinnedProject(project.id)}
                       />
                     ))}
                   </section>
