@@ -12,6 +12,8 @@ export function ServiceSearch({
   totalCount: number;
   onQueryChange: (query: string) => void;
 }) {
+  const serviceLabel = totalCount === 1 ? "service" : "services";
+
   return (
     <div className="mb-5 flex flex-col gap-3 border-y border-white/10 py-4 sm:flex-row sm:items-center sm:justify-between">
       <label className="relative block w-full sm:max-w-md">
@@ -22,7 +24,9 @@ export function ServiceSearch({
           className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600"
         />
         <input
-          type="search"
+          type="text"
+          inputMode="search"
+          role="searchbox"
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder="Search services…"
@@ -41,7 +45,9 @@ export function ServiceSearch({
       </label>
 
       <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
-        {query.trim() ? `${resultCount} of ${totalCount} services` : `${totalCount} services`}
+        {query.trim()
+          ? `${resultCount} of ${totalCount} ${serviceLabel}`
+          : `${totalCount} ${serviceLabel}`}
       </span>
     </div>
   );
