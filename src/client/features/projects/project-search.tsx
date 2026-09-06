@@ -44,7 +44,7 @@ export function ProjectSearch({
         ) : null}
       </label>
 
-      <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
+      <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-600" aria-live="polite">
         {query.trim()
           ? `${resultCount} of ${totalCount} ${projectLabel}`
           : `${totalCount} ${projectLabel}`}
