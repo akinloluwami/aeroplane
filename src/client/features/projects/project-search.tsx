@@ -12,6 +12,8 @@ export function ProjectSearch({
   totalCount: number;
   onQueryChange: (query: string) => void;
 }) {
+  const projectLabel = totalCount === 1 ? "project" : "projects";
+
   return (
     <div className="flex flex-col gap-3 border-y border-white/10 py-4 sm:flex-row sm:items-center sm:justify-between">
       <label className="relative block w-full sm:max-w-md">
@@ -22,7 +24,9 @@ export function ProjectSearch({
           className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600"
         />
         <input
-          type="search"
+          type="text"
+          inputMode="search"
+          role="searchbox"
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder="Search projects or services…"
@@ -41,7 +45,9 @@ export function ProjectSearch({
       </label>
 
       <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
-        {query.trim() ? `${resultCount} of ${totalCount} projects` : `${totalCount} projects`}
+        {query.trim()
+          ? `${resultCount} of ${totalCount} ${projectLabel}`
+          : `${totalCount} ${projectLabel}`}
       </span>
     </div>
   );
