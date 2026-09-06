@@ -28,6 +28,7 @@ export const services = sqliteTable("projects", {
   staticOutput: text("static_output"),
   buildMethod: text("build_method").notNull().default("auto"),
   dockerfilePath: text("dockerfile_path"),
+  persistentVolumePath: text("persistent_volume_path"),
   detectedBuildMethod: text("detected_build_method"),
   runtimeMode: text("runtime_mode").notNull().default("web"),
   internalPort: integer("internal_port").notNull(),
