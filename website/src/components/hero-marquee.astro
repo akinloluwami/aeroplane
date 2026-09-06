@@ -9,34 +9,13 @@ const items = [
   "updates.available",
   "buildkit.warm",
 ];
-
-const marqueeItems = [...items, ...items];
 ---
 
-<div
-  class="group absolute inset-x-0 bottom-0 z-[2] overflow-hidden border-t border-[rgba(52,56,67,0.9)] bg-[rgba(8,9,12,0.96)] py-[11px]"
-  aria-label="Platform status ticker"
->
-  <div
-    class="flex w-max gap-10 pr-10 [animation:marquee_48s_linear_infinite] group-hover:[animation-play-state:paused] motion-reduce:animate-none motion-reduce:group-hover:[animation-play-state:running]"
-  >
-    {marqueeItems.map((item) => (
-      <span class="shrink-0 font-mono text-[0.72rem] text-[#5f6370]">
-        {item}
-        <span aria-hidden="true" class="ml-10 text-[#30333b]">-</span>
-      </span>
-    ))}
-  </div>
+<div class="grid border-x border-t border-white/10 sm:grid-cols-2 lg:grid-cols-4" aria-label="Platform status ticker">
+  {items.map((item) => (
+    <div class="flex items-center gap-2 border-b border-r border-white/10 px-4 py-3 lg:[&:nth-last-child(-n+4)]:border-b-0">
+      <span class="size-1 bg-zinc-700" aria-hidden="true"></span>
+      <span class="font-mono text-[8px] text-zinc-600">{item}</span>
+    </div>
+  ))}
 </div>
-
-<style>
-  @keyframes marquee {
-    from {
-      transform: translateX(0);
-    }
-
-    to {
-      transform: translateX(-50%);
-    }
-  }
-</style>
