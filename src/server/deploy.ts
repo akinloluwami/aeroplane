@@ -40,6 +40,7 @@ import { isWorkerService } from "../shared/service-runtime.js";
 import { isFunctionService } from "../shared/service-functions.js";
 import { functionRuntimeLabel, writeFunctionDeploymentProject } from "./service-functions.js";
 import { prepareTanStackStartRuntime } from "./tanstack-start-runtime.js";
+import { applicationDataVolumeDockerArgs } from "./application-volume.js";
 
 type RunOptions = {
   cwd?: string;
@@ -383,6 +384,30 @@ function currentActivePortForService(serviceId: string, fallback: number | null)
   return current ? current.activePort : fallback;
 }
 
+async function stopExistingContainerForVolumeRollout({
+  service,
+  containerName,
+  deploymentId,
+  secrets
+}: {
+  service: Pick<Service, "persistentVolumePath">;
+  containerName: string;
+  deploymentId: string;
+  secrets: string[];
+}) {
+  if (!service.persistentVolumePath) return false;
+
+  const existingState = await getContainerState(containerName);
+  if (!existingState?.running && !existingState?.restarting) {
+    appendDeploymentLog(deploymentId, `No previous container named ${containerName} was running.`);
+    return false;
+  }
+
+  appendDeploymentLog(deploymentId, "Stopping the previous container before attaching its persistent volume to the replacement.");
+  await runCommand("docker", ["stop", containerName], deploymentId, { redact: secrets });
+  return true;
+}
+
 async function rollbackFailedWebRollout({
   deploymentId,
   serviceId,
@@ -390,6 +415,7 @@ async function rollbackFailedWebRollout({
   shouldRestoreActivePort,
   tempContainerName,
   shouldRemoveTempContainer,
+  stoppedContainerName,
   secrets
 }: {
   deploymentId: string;
@@ -398,8 +424,27 @@ async function rollbackFailedWebRollout({
   shouldRestoreActivePort: boolean;
   tempContainerName: string | null;
   shouldRemoveTempContainer: boolean;
+  stoppedContainerName?: string | null;
   secrets: string[];
 }) {
+  if (tempContainerName && shouldRemoveTempContainer) {
+    await removeDeploymentContainer({
+      containerName: tempContainerName,
+      log: (line, stream = "system") => appendDeploymentLog(deploymentId, line, stream, secrets),
+      runBufferedDocker: (args) => runBufferedCommand("docker", args)
+    });
+  }
+
+  if (stoppedContainerName) {
+    try {
+      appendDeploymentLog(deploymentId, `Restarting previous stateful container ${stoppedContainerName} after failed rollout.`, "stderr", secrets);
+      await runCommand("docker", ["start", stoppedContainerName], deploymentId, { redact: secrets });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      appendDeploymentLog(deploymentId, `Failed to restart previous stateful container: ${message}`, "stderr", secrets);
+    }
+  }
+
   if (shouldRestoreActivePort) {
     try {
       db.update(services).set({ activePort: previousActivePort, updatedAt: now() }).where(eq(services.id, serviceId)).run();
@@ -422,13 +467,6 @@ async function rollbackFailedWebRollout({
     }
   }
 
-  if (tempContainerName && shouldRemoveTempContainer) {
-    await removeDeploymentContainer({
-      containerName: tempContainerName,
-      log: (line, stream = "system") => appendDeploymentLog(deploymentId, line, stream, secrets),
-      runBufferedDocker: (args) => runBufferedCommand("docker", args)
-    });
-  }
 }
 
 async function cleanupInterruptedDeploymentContainers(interruptedDeployments: { id: string; serviceId: string; containerName: string | null }[]) {
@@ -961,6 +999,7 @@ async function runDeployment(deployment: Deployment, service: Service) {
     let webTempContainerPromoted = false;
     let webActivePortChanged = false;
     let webPreviousActivePort = service.activePort;
+    let webOldContainerStoppedForVolume = false;
     if (!imageName) {
       db.update(deployments)
         .set({ status: "failed", startedAt, finishedAt: now(), containerName })
@@ -1026,7 +1065,8 @@ async function runDeployment(deployment: Deployment, service: Service) {
           "unless-stopped",
           "--name",
           containerName,
-          ...runtimeNetworkArgs(service)
+          ...runtimeNetworkArgs(service),
+          ...applicationDataVolumeDockerArgs(service)
         ];
         for (const [key, value] of Object.entries(env)) {
           dockerArgs.push("--env", `${key}=${value}`);
@@ -1070,6 +1110,13 @@ async function runDeployment(deployment: Deployment, service: Service) {
       webTempContainerName = tempContainerName;
       appendDeploymentLog(deployment.id, `Allocated ephemeral port ${tempPort} for Docker image rollout.`);
 
+      webOldContainerStoppedForVolume = await stopExistingContainerForVolumeRollout({
+        service,
+        containerName,
+        deploymentId: deployment.id,
+        secrets
+      });
+
       const dockerArgs = [
         "run",
         "-d",
@@ -1078,6 +1125,7 @@ async function runDeployment(deployment: Deployment, service: Service) {
         "--name",
         tempContainerName,
         ...runtimeNetworkArgs(service),
+        ...applicationDataVolumeDockerArgs(service),
         "-p",
         `127.0.0.1:${tempPort}:${runtimePort}`
       ];
@@ -1122,7 +1170,11 @@ async function runDeployment(deployment: Deployment, service: Service) {
       await new Promise((resolvePromise) => setTimeout(resolvePromise, 300));
 
       appendDeploymentLog(deployment.id, `Stopping and removing old container ${containerName} if it exists...`);
-      await runCommand("docker", ["rm", "-f", containerName], deployment.id).catch(() => undefined);
+      await runCommand("docker", ["rm", "-f", containerName], deployment.id)
+        .then(() => {
+          webOldContainerStoppedForVolume = false;
+        })
+        .catch(() => undefined);
 
       appendDeploymentLog(deployment.id, `Renaming new container ${tempContainerName} to stable name ${containerName}...`);
       await runCommand("docker", ["rename", tempContainerName, containerName], deployment.id);
@@ -1155,6 +1207,7 @@ async function runDeployment(deployment: Deployment, service: Service) {
           shouldRestoreActivePort: webActivePortChanged && !webTempContainerPromoted,
           tempContainerName: webTempContainerName,
           shouldRemoveTempContainer: webTempContainerNeedsCleanup && !webTempContainerPromoted,
+          stoppedContainerName: webOldContainerStoppedForVolume ? containerName : null,
           secrets
         });
         return;
@@ -1171,6 +1224,7 @@ async function runDeployment(deployment: Deployment, service: Service) {
         shouldRestoreActivePort: webActivePortChanged && !webTempContainerPromoted,
         tempContainerName: webTempContainerName,
         shouldRemoveTempContainer: webTempContainerNeedsCleanup && !webTempContainerPromoted,
+        stoppedContainerName: webOldContainerStoppedForVolume ? containerName : null,
         secrets
       });
     }
@@ -1200,6 +1254,7 @@ async function runDeployment(deployment: Deployment, service: Service) {
   let webTempContainerPromoted = false;
   let webActivePortChanged = false;
   let webPreviousActivePort = service.activePort;
+  let webOldContainerStoppedForVolume = false;
 
   try {
     if (config.deployDryRun) {
@@ -1400,7 +1455,8 @@ async function runDeployment(deployment: Deployment, service: Service) {
         "unless-stopped",
         "--name",
         containerName,
-        ...runtimeNetworkArgs(service)
+        ...runtimeNetworkArgs(service),
+        ...applicationDataVolumeDockerArgs(service)
       ];
       for (const [key, value] of Object.entries(env)) {
         dockerArgs.push("--env", `${key}=${value}`);
@@ -1452,6 +1508,13 @@ async function runDeployment(deployment: Deployment, service: Service) {
     webTempContainerName = tempContainerName;
     appendDeploymentLog(deployment.id, `Allocated ephemeral port ${tempPort} for zero-downtime container rollout.`);
 
+    webOldContainerStoppedForVolume = await stopExistingContainerForVolumeRollout({
+      service,
+      containerName,
+      deploymentId: deployment.id,
+      secrets
+    });
+
     const dockerArgs = [
       "run",
       "-d",
@@ -1460,6 +1523,7 @@ async function runDeployment(deployment: Deployment, service: Service) {
       "--name",
       tempContainerName,
       ...runtimeNetworkArgs(service),
+      ...applicationDataVolumeDockerArgs(service),
       "-p",
       `127.0.0.1:${tempPort}:${runtimePort}`
     ];
@@ -1505,9 +1569,13 @@ async function runDeployment(deployment: Deployment, service: Service) {
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 300));
 
     appendDeploymentLog(deployment.id, `Stopping and removing old container ${containerName} if it exists...`);
-    await runCommand("docker", ["rm", "-f", containerName], deployment.id).catch(() => {
-      // Ignore if no previous container was running
-    });
+    await runCommand("docker", ["rm", "-f", containerName], deployment.id)
+      .then(() => {
+        webOldContainerStoppedForVolume = false;
+      })
+      .catch(() => {
+        // Ignore if no previous container was running
+      });
 
     appendDeploymentLog(deployment.id, `Renaming new container ${tempContainerName} to stable name ${containerName}...`);
     await runCommand("docker", ["rename", tempContainerName, containerName], deployment.id);
@@ -1540,6 +1608,7 @@ async function runDeployment(deployment: Deployment, service: Service) {
         shouldRestoreActivePort: webActivePortChanged && !webTempContainerPromoted,
         tempContainerName: webTempContainerName,
         shouldRemoveTempContainer: webTempContainerNeedsCleanup && !webTempContainerPromoted,
+        stoppedContainerName: webOldContainerStoppedForVolume ? containerName : null,
         secrets
       });
       return;
@@ -1556,6 +1625,7 @@ async function runDeployment(deployment: Deployment, service: Service) {
       shouldRestoreActivePort: webActivePortChanged && !webTempContainerPromoted,
       tempContainerName: webTempContainerName,
       shouldRemoveTempContainer: webTempContainerNeedsCleanup && !webTempContainerPromoted,
+      stoppedContainerName: webOldContainerStoppedForVolume ? containerName : null,
       secrets
     });
   } finally {
