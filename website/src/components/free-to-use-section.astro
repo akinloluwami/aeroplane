@@ -1,25 +1,47 @@
-<section class="relative overflow-hidden border-t border-[rgba(52,56,67,0.65)] bg-[#08090c] py-24 text-[var(--aero-text)]">
-  <div
-    class="pointer-events-none absolute inset-0 [background-image:linear-gradient(rgba(255,255,255,0.026)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.026)_1px,transparent_1px)] [background-size:72px_72px]"
-    aria-hidden="true"
-  >
-  </div>
-
-  <div class="relative mx-auto grid w-[min(1180px,calc(100%_-_40px))] gap-12 lg:grid-cols-[1fr_0.82fr] lg:items-center">
-    <div>
-      <h2 class="font-hero m-0 text-[clamp(3.2rem,6.5vw,6rem)] font-bold leading-[0.96] text-zinc-100">
-        <span class="block whitespace-nowrap">100% free</span>
-        <span class="block whitespace-nowrap">to use</span>
+<section class="free-to-use-section site-section bg-black text-white">
+  <div class="site-noise" aria-hidden="true"></div>
+  <div class="free-to-use-container relative grid min-h-[26rem] gap-8 lg:grid-cols-[0.9fr_0.82fr] lg:items-center lg:gap-6">
+    <div class="min-w-0">
+      <h2 class="font-hero m-0 text-[clamp(3.2rem,6.5vw,6rem)] leading-[0.96] tracking-[-0.06em] text-zinc-100">
+        <span class="block sm:whitespace-nowrap">100% free</span>
+        <span class="block sm:whitespace-nowrap">to use</span>
       </h2>
     </div>
 
-    <div class="grid max-w-xl gap-3 font-mono text-sm text-[var(--aero-muted)]">
-      <p class="m-0 border-l border-[rgba(79,184,178,0.55)] pl-5 leading-7">
+    <div class="grid gap-5 font-mono text-[clamp(0.82rem,1.25vw,1rem)] leading-8">
+      <p class="m-0 border-l border-white/80 py-1 pl-6 text-zinc-400">
         No cloud subscription. No seat pricing. No deployment tax.
       </p>
-      <p class="m-0 border-l border-[rgba(52,56,67,0.9)] pl-5 leading-7">
+      <p class="m-0 border-l border-white/20 py-1 pl-6 text-zinc-500">
         Bring a server, install Aeroplane, and keep the control plane on infrastructure you own.
       </p>
     </div>
   </div>
 </section>
+
+<style>
+  .free-to-use-section {
+    background-color: #070809;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 120px 120px;
+  }
+
+  .free-to-use-container {
+    width: min(1180px, calc(100% - 40px));
+    margin-inline: auto;
+  }
+
+  @media (max-width: 1023px) {
+    .free-to-use-section {
+      background-size: 80px 80px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .free-to-use-container {
+      width: calc(100% - 28px);
+    }
+  }
+</style>

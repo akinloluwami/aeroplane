@@ -1,0 +1,90 @@
+---
+import RailwayLogo from "./railway-logo.astro";
+import VercelLogo from "./vercel-logo.astro";
+
+const providers = [
+  {
+    name: "Vercel",
+    description: "Bring over your Git source, environment variables, build settings, and custom domains.",
+    details: ["Git source and commands", "Environment variables", "Custom domains"],
+    Logo: VercelLogo,
+    logoClass: "size-4",
+  },
+  {
+    name: "Railway",
+    description: "Move complete projects with services, databases, variables, and deployment settings.",
+    details: ["Apps and databases", "Variables and overrides", "Domains and service ports"],
+    Logo: RailwayLogo,
+    logoClass: "size-5",
+  },
+];
+
+const migrationSteps = [
+  {
+    label: "01",
+    title: "Connect your provider",
+    body: "Use a provider API token to securely load the projects available to migrate.",
+  },
+  {
+    label: "02",
+    title: "Choose what moves",
+    body: "Select a project, environment, services, variables, and deployment preferences.",
+  },
+  {
+    label: "03",
+    title: "Deploy on your server",
+    body: "Aeroplane recreates the stack in your self-hosted control plane, ready to inspect and deploy.",
+  },
+];
+---
+
+<section id="migrate" class="site-section bg-black text-white">
+  <div class="site-noise" aria-hidden="true"></div>
+  <div class="aero-container relative">
+    <header class="grid gap-7 border-b border-white/10 pb-10 lg:grid-cols-[0.78fr_1fr] lg:items-end lg:gap-20">
+      <div>
+        <p class="section-label mb-4">Provider migration</p>
+        <h2 class="section-title m-0">Migrate from your existing provider</h2>
+      </div>
+      <p class="section-copy m-0">
+        Move your apps and infrastructure to a self-hosted Aeroplane control plane without rebuilding everything by hand.
+        Import from Vercel or Railway, review what comes across, and deploy on your own server.
+      </p>
+    </header>
+
+    <div class="mt-10 grid border border-white/10 bg-[#070707] lg:grid-cols-2">
+      {providers.map(({ name, description, details, Logo, logoClass }, providerIndex) => (
+        <article class:list={["p-5 sm:p-7", providerIndex === 0 && "border-b border-white/10 lg:border-b-0 lg:border-r"]}>
+          <header class="flex items-start gap-4">
+            <span class="grid size-11 shrink-0 place-items-center border border-white/15 text-white">
+              <Logo class={logoClass} />
+            </span>
+            <div>
+              <p class="section-label mb-2">Import from</p>
+              <h3 class="m-0 text-xl text-zinc-100">{name}</h3>
+            </div>
+          </header>
+          <p class="mb-0 mt-5 max-w-xl text-sm leading-7 text-zinc-500">{description}</p>
+          <div class="mt-5 grid gap-2 sm:grid-cols-3">
+            {details.map((detail, index) => (
+              <div class="border border-white/10 bg-black px-3 py-3">
+                <span class="font-mono text-[7px] text-zinc-800">{String(index + 1).padStart(2, "0")}</span>
+                <p class="mb-0 mt-2 text-xs leading-5 text-zinc-500">{detail}</p>
+              </div>
+            ))}
+          </div>
+        </article>
+      ))}
+    </div>
+
+    <section class="mt-4 divide-y divide-white/10 border border-white/10 bg-[#070707]">
+      {migrationSteps.map((step) => (
+        <article class="grid gap-3 px-5 py-4 sm:grid-cols-[40px_190px_minmax(0,1fr)] sm:items-start">
+          <span class="font-mono text-[8px] tracking-[0.15em] text-zinc-700">{step.label}</span>
+          <h3 class="m-0 text-sm text-zinc-200">{step.title}</h3>
+          <p class="m-0 text-xs leading-6 text-zinc-600">{step.body}</p>
+        </article>
+      ))}
+    </section>
+  </div>
+</section>

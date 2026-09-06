@@ -1,32 +1,26 @@
-<header
-  class="flex items-center justify-between gap-[18px] pb-5 font-mono text-[0.72rem] text-(--aero-muted) max-[640px]:flex-col max-[640px]:items-start"
->
-  <a class="inline-flex items-center gap-[11px] font-extrabold text-(--aero-text)" href="/">
-    <span class="grid size-[30px] place-items-center border border-[rgba(79,184,178,0.36)] bg-[rgba(79,184,178,0.1)]">
-      <img class="size-[17px]" src="/favicon.svg" alt="" />
+---
+import AeroplaneLogo from "./aeroplane-logo.astro";
+---
+
+<header class="flex min-h-16 items-center justify-between gap-5 border-b border-white/10 font-mono text-[10px] text-zinc-500 max-sm:flex-col max-sm:items-start max-sm:justify-center max-sm:py-4">
+  <a class="inline-flex items-center gap-3 text-white" href="/">
+    <span class="grid size-9 place-items-center border border-white/15 bg-white/[0.04]">
+      <AeroplaneLogo class="size-[18px]" />
     </span>
     <span>Aeroplane</span>
   </a>
 
-  <div
-    class="flex flex-wrap items-center justify-end gap-3 max-[640px]:justify-start"
-    aria-label="System status"
-  >
-    <span class="relative flex size-[7px]" aria-hidden="true">
-      <span class="absolute inline-flex size-full animate-ping rounded-full bg-(--aero-accent) motion-reduce:animate-none"></span>
-      <span class="relative inline-flex size-[7px] rounded-full bg-(--aero-accent)"></span>
-    </span>
+  <div class="flex flex-wrap items-center justify-end gap-3 max-sm:justify-start" aria-label="System status">
+    <span class="status-dot" aria-hidden="true"></span>
     <span>control plane ready</span>
     <span aria-hidden="true">::</span>
-    <a class="border-b border-current text-(--aero-text)" href="/docs/">docs</a>
+    <a class="border-b border-zinc-700 text-zinc-300 transition hover:border-white hover:text-white" href="/docs/">docs</a>
     <span aria-hidden="true">::</span>
     <a
-      class="border-b border-current text-(--aero-text)"
+      class="border-b border-zinc-700 text-zinc-300 transition hover:border-white hover:text-white"
       data-analytics-event="github_link_clicked"
       data-analytics-placement="hero_header"
       href="https://github.com/xt42io/aeroplane"
-    >
-      source
-    </a>
+    >source</a>
   </div>
 </header>

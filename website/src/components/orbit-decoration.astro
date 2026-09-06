@@ -1,0 +1,21 @@
+---
+import AeroplaneLogo from "./aeroplane-logo.astro";
+
+const { class: className = "" } = Astro.props;
+---
+
+<svg
+  class={className}
+  viewBox="0 0 720 720"
+  fill="none"
+  aria-hidden="true"
+>
+  <circle cx="360" cy="360" r="78" stroke="rgba(255,255,255,0.18)" />
+  <circle cx="360" cy="360" r="174" stroke="rgba(255,255,255,0.11)" />
+  <circle cx="360" cy="360" r="278" stroke="rgba(255,255,255,0.08)" />
+  <circle cx="360" cy="360" r="354" stroke="rgba(255,255,255,0.055)" />
+  <path d="M304 416 416 304" stroke="rgba(255,255,255,0.2)" />
+  <circle cx="171" cy="156" r="4" fill="#f4f4f5" />
+  <circle cx="599" cy="455" r="3" fill="#71717a" />
+  <AeroplaneLogo x="220" y="220" width="280" height="280" class="text-zinc-100" />
+</svg>

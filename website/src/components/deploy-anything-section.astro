@@ -39,65 +39,28 @@ const logoRows = [
 ];
 ---
 
-<section class="relative overflow-hidden border-t border-[rgba(52,56,67,0.65)] bg-[#08090c] py-24 text-[var(--aero-text)]">
-  <div
-    class="pointer-events-none absolute inset-0 [background-image:linear-gradient(rgba(255,255,255,0.026)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.026)_1px,transparent_1px)] [background-size:72px_72px]"
-    aria-hidden="true"
-  >
-  </div>
-  <div
-    class="pointer-events-none absolute inset-x-0 top-0 h-96 bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,rgba(79,184,178,0.12),transparent)]"
-    aria-hidden="true"
-  >
-  </div>
+<section id="deploy" class="site-section bg-[#050505] text-white">
+  <div class="aero-container">
+    <h2 class="section-title m-0">Deploy anything</h2>
 
-  <div class="relative mx-auto w-[min(1180px,calc(100%_-_40px))]">
-    <h2 class="font-hero m-0 text-[clamp(2.3rem,5vw,4.5rem)] font-bold leading-none text-zinc-100">
-      Deploy anything
-    </h2>
-  </div>
-
-  <div class="relative mt-14 grid gap-5">
-    {logoRows.map((logos, index) => (
-      <div class="logo-marquee overflow-hidden py-5">
-        <div class={`logo-track flex w-max gap-12 pr-12 ${index % 2 === 1 ? "reverse" : ""}`}>
-          {[...logos, ...logos, ...logos].map((logo) => (
-            <div class="flex h-24 min-w-28 items-center justify-center px-2">
-              <img class="size-16 object-contain" src={logo.icon} alt={`${logo.name} logo`} loading="lazy" />
-            </div>
+    <div class="mt-12 grid gap-3">
+      {logoRows.map((logos) => (
+        <div class="grid grid-cols-2 border-l border-t border-white/10 sm:grid-cols-5 lg:grid-cols-10">
+          {logos.map((logo) => (
+            <article class="group grid min-h-28 place-items-center border-b border-r border-white/10 px-2 py-4 text-center">
+              <div>
+                <img
+                  class="mx-auto size-8 object-contain opacity-65 grayscale transition group-hover:opacity-100 group-hover:grayscale-0"
+                  src={logo.icon}
+                  alt={`${logo.name} logo`}
+                  loading="lazy"
+                />
+                <p class="mb-0 mt-3 font-mono text-[7px] uppercase tracking-[0.1em] text-zinc-600">{logo.name}</p>
+              </div>
+            </article>
           ))}
         </div>
-      </div>
-    ))}
+      ))}
+    </div>
   </div>
 </section>
-
-<style>
-  .logo-track {
-    animation: logo-marquee 46s linear infinite;
-  }
-
-  .logo-track.reverse {
-    animation-direction: reverse;
-  }
-
-  .logo-marquee:hover .logo-track {
-    animation-play-state: paused;
-  }
-
-  @keyframes logo-marquee {
-    from {
-      transform: translateX(0);
-    }
-
-    to {
-      transform: translateX(-33.333%);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .logo-track {
-      animation: none;
-    }
-  }
-</style>

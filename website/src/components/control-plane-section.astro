@@ -18,43 +18,30 @@ const workflow = [
 ];
 ---
 
-<section class="relative overflow-hidden border-t border-[rgba(52,56,67,0.65)] bg-[#08090c] py-24 text-(--aero-text)">
-  <div
-    class="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.026)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.026)_1px,transparent_1px)] bg-size-[72px_72px]"
-    aria-hidden="true"
-  >
-  </div>
-  <div
-    class="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,rgba(79,184,178,0.12),transparent)]"
-    aria-hidden="true"
-  >
-  </div>
+<section id="platform" class="site-section bg-black text-white">
+  <div class="site-noise" aria-hidden="true"></div>
+  <div class="aero-container relative">
+    <div class="grid gap-12 lg:grid-cols-[0.75fr_1.25fr] lg:gap-20">
+      <div>
+        <p class="section-label">After bootstrap</p>
+        <h2 class="section-title">Your server gets a cockpit.</h2>
+        <p class="section-copy mt-6">
+          Aeroplane keeps the powerful parts visible: deploys, databases, domains, logs, backups, and host maintenance.
+        </p>
+      </div>
 
-  <div class="relative mx-auto grid w-[min(1180px,calc(100%-40px))] gap-14 lg:grid-cols-[0.72fr_1fr] lg:items-start">
-    <div>
-      <p class="m-0 font-mono text-[0.68rem] font-bold uppercase tracking-[0.24em] text-(--aero-accent)">
-        After bootstrap
-      </p>
-      <h2 class="font-hero mt-5 max-w-[11ch] text-[clamp(2rem,4vw,3.8rem)] font-bold leading-none text-zinc-100">
-        Your server gets a cockpit.
-      </h2>
-      <p class="mt-6 max-w-md font-mono text-sm leading-7 text-(--aero-muted)">
-        Aeroplane keeps the powerful parts visible: deploys, databases, domains, logs, backups, and host maintenance.
-      </p>
-    </div>
-
-    <div class="grid gap-8">
-      <div class="grid gap-3">
+      <div class="border border-white/10 bg-[#070707]">
         {workflow.map((item) => (
-          <article class="grid gap-5 border border-[rgba(52,56,67,0.8)] bg-[rgba(17,19,24,0.48)] p-5 sm:grid-cols-[72px_1fr]">
-            <div class="font-mono text-xs font-bold text-[#5f6370]">{item.label}</div>
+          <article class="grid gap-4 border-b border-white/10 p-5 last:border-b-0 sm:grid-cols-[56px_minmax(0,1fr)] sm:p-6">
+            <span class="font-mono text-[9px] tracking-[0.16em] text-zinc-700">{item.label}</span>
             <div>
-              <h3 class="m-0 text-xl font-semibold text-zinc-100">{item.title}</h3>
-              <p class="mt-2 max-w-2xl font-mono text-[0.82rem] leading-6 text-(--aero-muted)">{item.body}</p>
+              <h3 class="m-0 text-lg text-zinc-100">{item.title}</h3>
+              <p class="mb-0 mt-2 max-w-2xl text-sm leading-7 text-zinc-600">{item.body}</p>
             </div>
           </article>
         ))}
       </div>
     </div>
+
   </div>
 </section>
