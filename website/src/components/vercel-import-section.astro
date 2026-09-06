@@ -1,4 +1,5 @@
 ---
+import VercelImportVisual from "./vercel-import-visual.astro";
 import VercelLogo from "./vercel-logo.astro";
 
 const importSteps = [
@@ -27,94 +28,39 @@ const importDetails = [
 ];
 
 const previewRows = [
-  { key: "repo", value: "acme/web", tone: "text-zinc-200" },
-  { key: "root", value: "apps/site", tone: "text-zinc-300" },
-  { key: "env", value: "production", tone: "text-[#8df4eb]" },
-  { key: "deploy", value: "queued", tone: "text-[#8df4eb]" },
+  { key: "repo", value: "acme/web" },
+  { key: "root", value: "apps/site" },
+  { key: "env", value: "production" },
+  { key: "deploy", value: "queued" },
 ];
 ---
 
-<section class="relative overflow-hidden border-t border-[rgba(52,56,67,0.65)] bg-[#07080b] py-24 text-[var(--aero-text)]">
-  <div
-    class="pointer-events-none absolute inset-0 [background-image:linear-gradient(rgba(255,255,255,0.024)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.024)_1px,transparent_1px)] [background-size:72px_72px]"
-    aria-hidden="true"
-  >
-  </div>
-  <div
-    class="pointer-events-none absolute inset-x-0 top-0 h-96 bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,rgba(141,244,235,0.1),transparent)]"
-    aria-hidden="true"
-  >
-  </div>
-
-  <div class="relative mx-auto w-[min(1180px,calc(100%_-_40px))]">
-    <div class="max-w-3xl">
-      <h2 class="font-hero m-0 max-w-[11ch] text-[clamp(2.25rem,5vw,4.8rem)] font-bold leading-none text-zinc-100">
-        Import from Vercel <VercelLogo class="ml-3 inline-block h-[0.72em] w-auto translate-y-[0.04em] text-zinc-100" />
-      </h2>
-      <p class="mt-6 max-w-xl font-mono text-sm leading-7 text-[var(--aero-muted)]">
+<section class="site-section bg-[#050505] text-white">
+  <div class="aero-container">
+    <header class="grid gap-7 border-b border-white/10 pb-10 lg:grid-cols-[0.78fr_1fr] lg:items-end lg:gap-20">
+      <div class="flex items-start gap-4">
+        <span class="mt-1 grid size-11 shrink-0 place-items-center border border-white/15 text-white">
+          <VercelLogo class="size-5" />
+        </span>
+        <h2 class="section-title m-0">Import from Vercel</h2>
+      </div>
+      <p class="section-copy m-0">
         Move a Vercel app into Aeroplane with its Git source, environment target, commands, and custom domains already shaped for your server.
       </p>
+    </header>
+
+    <div class="mt-10">
+      <VercelImportVisual previewRows={previewRows} importDetails={importDetails} />
     </div>
 
-    <div class="mt-12 grid gap-8 lg:grid-cols-[0.9fr_1fr] lg:items-start">
-      <div class="grid gap-3">
-        {importSteps.map((step) => (
-          <article class="grid gap-4 border border-[rgba(52,56,67,0.78)] bg-[rgba(17,19,24,0.5)] p-5 sm:grid-cols-[64px_1fr]">
-            <div class="font-mono text-xs font-bold text-[var(--aero-accent-strong)]">{step.label}</div>
-            <div>
-              <h3 class="m-0 text-xl font-semibold text-zinc-100">{step.title}</h3>
-              <p class="mt-2 max-w-2xl font-mono text-[0.82rem] leading-6 text-[var(--aero-muted)]">{step.body}</p>
-            </div>
-          </article>
-        ))}
-      </div>
-
-      <div class="relative overflow-hidden border border-[rgba(52,56,67,0.82)] bg-[rgba(17,19,24,0.5)] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.28)]">
-        <div
-          class="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_30%),linear-gradient(315deg,rgba(79,184,178,0.12),transparent_36%)]"
-          aria-hidden="true"
-        >
-        </div>
-        <div class="relative grid gap-4">
-          <div class="flex items-center justify-between gap-3 border border-[rgba(52,56,67,0.72)] bg-[#08090c]/75 p-3">
-            <div class="flex min-w-0 items-center gap-3">
-              <span class="grid size-10 shrink-0 place-items-center border border-zinc-600/55 bg-zinc-100/[0.06] text-zinc-100" aria-hidden="true">
-                <VercelLogo class="size-4" />
-              </span>
-              <div class="min-w-0">
-                <p class="m-0 truncate text-sm font-semibold text-zinc-100">Vercel project</p>
-                <p class="mt-1 m-0 font-mono text-[0.66rem] uppercase tracking-[0.16em] text-zinc-500">
-                  production target
-                </p>
-              </div>
-            </div>
-            <span class="border border-[rgba(141,244,235,0.34)] px-2.5 py-1 font-mono text-[0.62rem] font-bold uppercase tracking-[0.14em] text-[var(--aero-accent-strong)]">
-              ready
-            </span>
-          </div>
-
-          <div class="grid gap-2 border border-[rgba(79,184,178,0.32)] bg-[rgba(8,9,12,0.82)] p-3">
-            {previewRows.map((row) => (
-              <div class="grid grid-cols-[92px_1fr] items-center gap-3 border border-[rgba(52,56,67,0.58)] bg-[rgba(17,19,24,0.72)] px-3 py-2.5 font-mono">
-                <span class="text-[0.62rem] font-bold uppercase tracking-[0.16em] text-zinc-500">{row.key}</span>
-                <span class={`truncate text-xs font-bold ${row.tone}`}>{row.value}</span>
-              </div>
-            ))}
-          </div>
-
-          <div class="grid gap-2 border border-[rgba(52,56,67,0.78)] bg-[rgba(17,19,24,0.48)] p-4">
-            <p class="m-0 font-mono text-[0.66rem] font-bold uppercase tracking-[0.2em] text-zinc-500">
-              Included in the import
-            </p>
-            {importDetails.map((detail) => (
-              <div class="grid grid-cols-[auto_1fr] items-center gap-3 font-mono text-xs leading-6 text-zinc-300">
-                <span class="size-1.5 bg-[var(--aero-accent)]"></span>
-                <span>{detail}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+    <section class="mt-4 divide-y divide-white/10 border border-white/10 bg-[#070707]">
+      {importSteps.map((step) => (
+        <article class="grid gap-3 px-5 py-4 sm:grid-cols-[40px_170px_minmax(0,1fr)] sm:items-start">
+          <span class="font-mono text-[8px] tracking-[0.15em] text-zinc-700">{step.label}</span>
+          <h3 class="m-0 text-sm text-zinc-200">{step.title}</h3>
+          <p class="m-0 text-xs leading-6 text-zinc-600">{step.body}</p>
+        </article>
+      ))}
+    </section>
   </div>
 </section>
