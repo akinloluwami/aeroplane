@@ -1,0 +1,60 @@
+---
+import AeroplaneLogo from "./aeroplane-logo.astro";
+import VercelLogo from "./vercel-logo.astro";
+
+const { previewRows, importDetails } = Astro.props;
+---
+
+<div class="border border-white/15 bg-[#070707]">
+  <div class="grid lg:grid-cols-[minmax(0,1fr)_104px_minmax(0,1fr)]">
+    <section class="min-w-0 border-b border-white/10 lg:border-b-0 lg:border-r">
+      <header class="flex items-center justify-between gap-3 border-b border-white/10 p-4">
+        <div class="flex min-w-0 items-center gap-3">
+          <span class="grid size-10 shrink-0 place-items-center border border-white/10 text-white">
+            <VercelLogo class="size-4" />
+          </span>
+          <div class="min-w-0">
+            <p class="m-0 truncate text-xs text-zinc-200">Vercel project</p>
+            <p class="mb-0 mt-1 font-mono text-[8px] uppercase tracking-[0.13em] text-zinc-700">production target</p>
+          </div>
+        </div>
+        <span class="inline-flex items-center gap-2 font-mono text-[8px] uppercase tracking-[0.13em] text-emerald-300">
+          <span class="status-dot"></span>ready
+        </span>
+      </header>
+
+      <dl class="m-0 divide-y divide-white/10 p-4">
+        {previewRows.map((row) => (
+          <div class="grid grid-cols-[92px_minmax(0,1fr)] items-center gap-4 border-x border-t border-white/10 px-3 py-3 last:border-b">
+            <dt class="font-mono text-[8px] uppercase tracking-[0.13em] text-zinc-700">{row.key}</dt>
+            <dd class="m-0 truncate font-mono text-[9px] text-zinc-300">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+
+    <div class="relative grid min-h-24 place-items-center border-b border-white/10 bg-black lg:min-h-0 lg:border-b-0 lg:border-r" aria-label="Migration direction">
+      <span class="absolute bottom-0 left-1/2 top-0 border-l border-dashed border-white/15 lg:bottom-auto lg:left-0 lg:right-0 lg:top-1/2 lg:border-l-0 lg:border-t"></span>
+      <span class="relative grid size-11 place-items-center border border-white/20 bg-black text-white">
+        <AeroplaneLogo class="size-5 rotate-[135deg] lg:rotate-45" />
+      </span>
+      <span class="absolute bottom-2 left-1/2 -translate-x-1/2 font-mono text-[10px] text-zinc-600 lg:hidden">↓</span>
+      <span class="absolute right-2 top-1/2 hidden -translate-y-1/2 font-mono text-[10px] text-zinc-600 lg:block">→</span>
+    </div>
+
+    <section class="min-w-0">
+      <header class="flex min-h-[73px] items-center justify-between gap-3 border-b border-white/10 p-4">
+        <p class="section-label">Included in the import</p>
+        <AeroplaneLogo class="size-5 text-zinc-500" />
+      </header>
+      <div class="divide-y divide-white/10 p-4">
+        {importDetails.map((detail, index) => (
+          <div class="grid grid-cols-[28px_minmax(0,1fr)] items-start gap-3 border-x border-t border-white/10 px-3 py-3 last:border-b">
+            <span class="font-mono text-[7px] text-zinc-800">{String(index + 1).padStart(2, "0")}</span>
+            <span class="text-xs leading-5 text-zinc-500">{detail}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  </div>
+</div>
