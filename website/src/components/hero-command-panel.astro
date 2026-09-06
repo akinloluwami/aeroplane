@@ -4,6 +4,11 @@ import CopyCheckIcon from "@hugeicons/core-free-icons/CopyCheckIcon";
 
 const command = "curl -fsSL https://get.aeroplane.run | sh";
 const capabilities = ["apps", "postgres", "redis", "domains", "backups", "logs"];
+const previewLines = [
+  ["resolve_preview", "app.example.com"],
+  ["service_status", "api: active"],
+  ["backup_window", "postgres: 02:00 UTC"],
+];
 const toPathAttrs = (icon) => icon.filter(([tag]) => tag === "path").map(([, attrs]) => ({
   d: attrs.d,
   stroke: attrs.stroke,
@@ -13,75 +18,63 @@ const toPathAttrs = (icon) => icon.filter(([tag]) => tag === "path").map(([, att
 }));
 const copyIconPaths = toPathAttrs(Copy01Icon);
 const copiedIconPaths = toPathAttrs(CopyCheckIcon);
-
-const previewLines = [
-  ["resolve_preview", "app.example.com"],
-  ["service_status", "api: active"],
-  ["backup_window", "postgres: 02:00 UTC"],
-];
 ---
 
-<div
-  class="grid gap-[18px] border border-[rgba(52,56,67,0.95)] bg-[rgba(8,9,12,0.68)] p-[clamp(20px,3vw,28px)] shadow-[0_0_60px_rgba(0,0,0,0.24)]"
->
-  <p class="m-0 font-mono text-[0.67rem] font-extrabold uppercase text-[#5f6370]">Bootstrap node</p>
+<div class="border border-white/15 bg-black">
+  <div class="flex items-center justify-between border-b border-white/10 px-4 py-3">
+    <p class="section-label">Bootstrap node</p>
+    <span class="inline-flex items-center gap-2 font-mono text-[8px] uppercase tracking-[0.14em] text-emerald-300">
+      <span class="status-dot"></span>Ready
+    </span>
+  </div>
 
-  <div
-    class="grid min-h-[54px] grid-cols-[auto_minmax(0,1fr)_64px] items-center border border-[rgba(79,184,178,0.3)] bg-[rgba(17,19,24,0.82)] pl-3.5 font-mono text-[var(--aero-text)] max-[520px]:grid-cols-[auto_1fr] max-[520px]:p-3"
-  >
-    <span class="text-[var(--aero-accent)]" aria-hidden="true">&gt;</span>
-    <code class="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap px-[13px] text-[0.82rem] text-[var(--aero-text)]">
-      {command}
+  <div class="grid grid-cols-[minmax(0,1fr)_48px] border-b border-white/10 bg-zinc-950">
+    <code class="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap px-4 py-4 font-mono text-[10px] text-zinc-300">
+      <span class="mr-2 text-zinc-700">&gt;</span>{command}
     </code>
     <button
       aria-label="Copy install command"
-      class="grid h-full min-h-[54px] w-full place-items-center border-l border-[rgba(52,56,67,0.9)] text-[var(--aero-accent)] transition hover:bg-[rgba(79,184,178,0.12)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--aero-accent)] max-[520px]:col-span-full max-[520px]:h-12 max-[520px]:min-h-0 max-[520px]:border-l-0 max-[520px]:border-t"
+      class="grid place-items-center border-l border-white/10 text-zinc-500 transition hover:bg-white/[0.05] hover:text-white"
       data-copy-command={command}
       type="button"
     >
-      <svg class="size-5 copy-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+      <svg class="copy-icon size-4" aria-hidden="true" viewBox="0 0 24 24" fill="none">
         {copyIconPaths.map((attrs) => <path {...attrs} />)}
       </svg>
-      <svg class="hidden size-5 copied-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none">
+      <svg class="copied-icon hidden size-4" aria-hidden="true" viewBox="0 0 24 24" fill="none">
         {copiedIconPaths.map((attrs) => <path {...attrs} />)}
       </svg>
     </button>
   </div>
 
-  <div>
-    <p class="m-0 font-mono text-[0.67rem] font-extrabold uppercase text-[#5f6370]">Managed surface</p>
-    <div class="mt-2.5 flex flex-wrap gap-2">
+  <div class="p-4">
+    <p class="section-label">Managed surface</p>
+    <div class="mt-3 grid grid-cols-2 border-l border-t border-white/10 sm:grid-cols-3">
       {capabilities.map((capability) => (
-        <span class="border border-[rgba(52,56,67,0.9)] bg-[rgba(8,9,12,0.78)] px-[9px] py-[7px] font-mono text-[0.76rem] text-[#c6c8ce]">
+        <span class="border-b border-r border-white/10 px-3 py-3 font-mono text-[9px] text-zinc-400">
           [{capability}]
         </span>
       ))}
-      <span class="border border-[rgba(79,184,178,0.5)] bg-[rgba(79,184,178,0.12)] px-[9px] py-[7px] font-mono text-[0.76rem] text-[var(--aero-accent)]">
+      <span class="border-b border-r border-white/10 px-3 py-3 font-mono text-[9px] text-zinc-600 sm:col-span-3">
         [+ more]
       </span>
     </div>
   </div>
 
-  <div
-    class="grid gap-[9px] border-t border-dashed border-[rgba(52,56,67,0.95)] pt-[18px] font-mono text-[0.78rem] text-[#c6c8ce]"
-    aria-label="Deployment preview"
-  >
+  <div class="border-t border-white/10 px-4 py-3" aria-label="Deployment preview">
     {previewLines.map(([label, value]) => (
-      <p class="m-0 flex gap-2.5 max-[520px]:flex-col max-[520px]:gap-0.5">
-        <span class="min-w-28 text-[#5f6370]">{label}</span>
-        {value}
+      <p class="m-0 grid grid-cols-[112px_minmax(0,1fr)] gap-3 border-b border-white/[0.06] py-2 font-mono text-[9px] last:border-b-0">
+        <span class="text-zinc-700">{label}</span>
+        <span class="truncate text-zinc-400">{value}</span>
       </p>
     ))}
   </div>
 </div>
 
 <script>
-  const copyButtons = document.querySelectorAll("[data-copy-command]");
-
-  copyButtons.forEach((button) => {
+  document.querySelectorAll("[data-copy-command]").forEach((button) => {
     button.addEventListener("click", async () => {
       const command = button.getAttribute("data-copy-command") || "";
-
       try {
         await navigator.clipboard.writeText(command);
       } catch {
@@ -95,13 +88,9 @@ const previewLines = [
         document.execCommand("copy");
         textarea.remove();
       }
-
       button.setAttribute("aria-label", "Copied install command");
       button.setAttribute("data-copied", "true");
-      window["posthog"]?.capture?.("install_command_copied", {
-        placement: "hero_command_panel",
-      });
-
+      window["posthog"]?.capture?.("install_command_copied", { placement: "hero_command_panel" });
       window.setTimeout(() => {
         button.setAttribute("aria-label", "Copy install command");
         button.removeAttribute("data-copied");
@@ -111,11 +100,6 @@ const previewLines = [
 </script>
 
 <style>
-  [data-copy-command][data-copied] .copy-icon {
-    display: none;
-  }
-
-  [data-copy-command][data-copied] .copied-icon {
-    display: block;
-  }
+  [data-copy-command][data-copied] .copy-icon { display: none; }
+  [data-copy-command][data-copied] .copied-icon { display: block; }
 </style>
