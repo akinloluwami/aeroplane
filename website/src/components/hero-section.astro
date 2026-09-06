@@ -1,61 +1,41 @@
 ---
-import HeroCommandPanel from "./hero-command-panel.astro";
 import GetStartedButton from "./get-started-button.astro";
+import HeroCommandPanel from "./hero-command-panel.astro";
 import HeroHeader from "./hero-header.astro";
 import HeroMarquee from "./hero-marquee.astro";
+import OrbitDecoration from "./orbit-decoration.astro";
 ---
 
-<section
-  class="relative isolate min-h-[100svh] overflow-hidden bg-[#08090c] text-[var(--aero-text)] [background-image:linear-gradient(135deg,rgba(79,184,178,0.1),transparent_38%),linear-gradient(315deg,rgba(255,79,154,0.08),transparent_36%)]"
->
-  <div
-    class="pointer-events-none absolute inset-0 -z-10 opacity-[0.06] [background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22%3E%3Cfilter id=%22a%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23a)%22/%3E%3C/svg%3E')]"
-    aria-hidden="true"
-  >
-  </div>
-  <div
-    class="pointer-events-none absolute inset-0 -z-10 [background-image:linear-gradient(rgba(255,255,255,0.032)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.032)_1px,transparent_1px)] [background-size:72px_72px]"
-    aria-hidden="true"
-  >
-  </div>
-  <p
-    class="pointer-events-none absolute left-[18px] top-1/2 m-0 hidden -translate-y-1/2 font-mono text-[9px] uppercase text-[#3f4350] [writing-mode:vertical-rl] min-[1120px]:block"
-    aria-hidden="true"
-  >
-    servers that ship
-  </p>
+<section class="relative min-h-[100svh] overflow-hidden bg-[#050505] text-white">
+  <div class="site-noise" aria-hidden="true"></div>
+  <OrbitDecoration class="pointer-events-none absolute -right-64 top-8 h-[760px] w-[760px] opacity-90" />
 
-  <div
-    class="relative z-[1] mx-auto box-border grid min-h-[100svh] w-[min(1180px,calc(100%_-_40px))] grid-rows-[auto_1fr] py-14 pb-[104px] max-[900px]:pt-10 max-sm:w-[min(100%_-_28px,1180px)] max-sm:pb-[90px]"
-  >
+  <div class="aero-container relative z-[1] grid min-h-[100svh] grid-rows-[auto_1fr_auto]">
     <HeroHeader />
 
-    <div
-      class="grid grid-cols-[minmax(0,1fr)_minmax(390px,0.72fr)] items-center gap-[clamp(44px,8vw,112px)] py-14 max-[900px]:grid-cols-1 max-[900px]:content-center max-[900px]:gap-[42px] max-[900px]:py-12 max-sm:py-10"
-    >
+    <div class="grid items-center gap-14 py-16 lg:grid-cols-[minmax(0,0.86fr)_minmax(440px,0.7fr)] lg:py-24">
       <div>
-        <h1 class="font-hero m-0 max-w-[920px] text-[clamp(2.4rem,4.5vw,4.1rem)] font-bold leading-[0.98] max-sm:text-[clamp(2.25rem,10vw,3.25rem)]">
-          <span class="block text-[var(--aero-muted)]">Deploy apps</span>
-          <span class="block whitespace-nowrap">and databases</span>
-          <span class="block">
-            on your own
-            <em
-              class="relative text-[var(--aero-accent)] not-italic after:absolute after:inset-x-0 after:bottom-[0.02em] after:h-px after:bg-[rgba(79,184,178,0.5)] after:content-['']"
-            >
-              server.
-            </em>
-          </span>
+        <h1 class="font-hero m-0 max-w-[12ch] text-[clamp(2.25rem,4.4vw,4.25rem)] leading-[1.02] tracking-[-0.05em] text-white">
+          <span class="block text-zinc-500">Deploy apps</span>
+          <span class="block">and databases</span>
+          <span class="block">on your own server.</span>
         </h1>
-        <p class="mt-8 max-w-[620px] font-mono text-[0.95rem] leading-[1.8] text-[var(--aero-muted)] max-sm:text-[0.86rem]">
+        <p class="mt-7 max-w-xl font-mono text-[0.84rem] leading-7 text-zinc-500">
           Aeroplane gives you a self-hosted control plane for apps, databases, domains, logs,
           backups, and updates on infrastructure you own.
         </p>
-        <GetStartedButton />
+        <div class="mt-8">
+          <GetStartedButton />
+        </div>
       </div>
 
-      <HeroCommandPanel />
+      <div class="relative">
+        <div class="absolute -left-3 -top-3 size-3 border-l border-t border-white/30" aria-hidden="true"></div>
+        <div class="absolute -bottom-3 -right-3 size-3 border-b border-r border-white/30" aria-hidden="true"></div>
+        <HeroCommandPanel />
+      </div>
     </div>
-  </div>
 
-  <HeroMarquee />
+    <HeroMarquee />
+  </div>
 </section>
