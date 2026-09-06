@@ -1,6 +1,5 @@
 ---
 import AeroplaneLogo from "./aeroplane-logo.astro";
-import MigrationDirectionIcon from "./migration-direction-icon.astro";
 import RailwayLogo from "./railway-logo.astro";
 
 const sourceServices = [
@@ -16,93 +15,77 @@ const targetServices = [
 ];
 ---
 
-<div
-  class="relative overflow-hidden border border-[rgba(52,56,67,0.82)] bg-[rgba(17,19,24,0.62)] p-4 shadow-[0_24px_90px_rgba(0,0,0,0.34)] sm:p-5"
->
-  <div
-    class="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(233,61,130,0.12),transparent_34%),linear-gradient(315deg,rgba(79,184,178,0.12),transparent_36%)]"
-    aria-hidden="true"
-  >
-  </div>
-
-  <div class="relative grid gap-4">
-    <div class="flex items-center justify-between gap-3 border border-[rgba(52,56,67,0.75)] bg-[#08090c]/80 p-3">
-      <div class="flex min-w-0 items-center gap-3">
-        <span
-          class="grid size-10 shrink-0 place-items-center border border-[#E93D82]/45 bg-[#E93D82]/12 font-hero text-sm font-bold text-[#ff7eb4]"
-          aria-hidden="true"
-        >
-          <RailwayLogo class="size-6" />
-        </span>
-        <div class="min-w-0">
-          <p class="m-0 truncate text-sm font-semibold text-zinc-100">Railway project</p>
-          <p class="mt-1 m-0 font-mono text-[0.66rem] uppercase tracking-[0.16em] text-zinc-500">
-            production env
-          </p>
-        </div>
-      </div>
-      <span class="border border-[#E93D82]/35 px-2.5 py-1 font-mono text-[0.62rem] font-bold uppercase tracking-[0.14em] text-[#ff7eb4]">
-        connected
-      </span>
-    </div>
-
-    <div class="grid gap-2">
-      {sourceServices.map((service) => (
-        <div class="grid grid-cols-[1fr_auto] items-center gap-3 border border-[rgba(52,56,67,0.62)] bg-[#0c0d11]/82 px-3 py-2.5">
-          <div class="min-w-0">
-            <p class="m-0 truncate font-mono text-xs font-bold text-zinc-200">{service.name}</p>
-            <p class="mt-1 m-0 font-mono text-[0.63rem] uppercase tracking-[0.13em] text-zinc-500">{service.type}</p>
-          </div>
-          <span class="border border-[rgba(233,61,130,0.28)] bg-[#E93D82]/8 px-2 py-1 font-mono text-[0.58rem] font-bold uppercase tracking-[0.12em] text-[#ff7eb4]">
-            {service.status}
-          </span>
-        </div>
-      ))}
-    </div>
-
-    <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-1">
-      <div class="h-px bg-gradient-to-r from-transparent to-[rgba(233,61,130,0.7)]"></div>
-      <div
-        class="grid size-12 place-items-center border border-[rgba(141,244,235,0.5)] bg-[rgba(79,184,178,0.13)] text-[var(--aero-accent-strong)]"
-        aria-label="Migration direction"
-      >
-        <MigrationDirectionIcon class="size-7" />
-      </div>
-      <div class="h-px bg-gradient-to-r from-[rgba(79,184,178,0.7)] to-transparent"></div>
-    </div>
-
-    <div class="grid gap-2 border border-[rgba(79,184,178,0.42)] bg-[rgba(8,9,12,0.86)] p-3">
-      <div class="flex items-center justify-between gap-3 border-b border-[rgba(52,56,67,0.72)] pb-3">
+<div class="border border-white/15 bg-[#070707]">
+  <div class="grid lg:grid-cols-[minmax(0,1fr)_104px_minmax(0,1fr)]">
+    <section class="min-w-0 border-b border-white/10 lg:border-b-0 lg:border-r">
+      <header class="flex items-center justify-between gap-3 border-b border-white/10 p-4">
         <div class="flex min-w-0 items-center gap-3">
-          <span
-            class="grid size-10 shrink-0 place-items-center border border-[rgba(141,244,235,0.46)] bg-[rgba(79,184,178,0.14)] font-hero text-sm font-bold text-[var(--aero-accent-strong)]"
-            aria-hidden="true"
-          >
-            <AeroplaneLogo class="size-6" />
+          <span class="grid size-10 shrink-0 place-items-center border border-white/10 text-white">
+            <RailwayLogo class="size-5" />
           </span>
           <div class="min-w-0">
-            <p class="m-0 truncate text-sm font-semibold text-zinc-100">Aeroplane stack</p>
-            <p class="mt-1 m-0 font-mono text-[0.66rem] uppercase tracking-[0.16em] text-zinc-500">
-              self-hosted
-            </p>
+            <p class="m-0 truncate text-xs text-zinc-200">Railway project</p>
+            <p class="mb-0 mt-1 font-mono text-[8px] uppercase tracking-[0.13em] text-zinc-700">production env</p>
           </div>
         </div>
-        <span class="border border-[rgba(141,244,235,0.42)] px-2.5 py-1 font-mono text-[0.62rem] font-bold uppercase tracking-[0.14em] text-[var(--aero-accent-strong)]">
-          migrated
-        </span>
-      </div>
+        <span class="font-mono text-[8px] uppercase tracking-[0.13em] text-zinc-500">connected</span>
+      </header>
 
-      {targetServices.map((service) => (
-        <div class="grid grid-cols-[1fr_auto] items-center gap-3 border border-[rgba(52,56,67,0.58)] bg-[rgba(17,19,24,0.72)] px-3 py-2.5">
-          <div class="min-w-0">
-            <p class="m-0 truncate font-mono text-xs font-bold text-zinc-200">{service.name}</p>
-            <p class="mt-1 m-0 font-mono text-[0.63rem] uppercase tracking-[0.13em] text-zinc-500">{service.type}</p>
-          </div>
-          <span class="border border-[rgba(79,184,178,0.32)] bg-[rgba(79,184,178,0.08)] px-2 py-1 font-mono text-[0.58rem] font-bold uppercase tracking-[0.12em] text-[var(--aero-accent-strong)]">
-            {service.status}
-          </span>
+      <div class="p-4">
+        <div class="divide-y divide-white/10 border border-white/10 bg-black">
+          {sourceServices.map((service, index) => (
+            <div class="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3">
+              <span class="font-mono text-[7px] text-zinc-800">{String(index + 1).padStart(2, "0")}</span>
+              <div class="min-w-0">
+                <p class="m-0 truncate font-mono text-[9px] text-zinc-300">{service.name}</p>
+                <p class="mb-0 mt-1 font-mono text-[7px] uppercase tracking-[0.12em] text-zinc-700">{service.type}</p>
+              </div>
+              <span class="font-mono text-[7px] uppercase tracking-[0.12em] text-zinc-600">{service.status}</span>
+            </div>
+          ))}
         </div>
-      ))}
+      </div>
+    </section>
+
+    <div class="relative grid min-h-24 place-items-center border-b border-white/10 bg-black lg:min-h-0 lg:border-b-0 lg:border-r" aria-label="Migration direction">
+      <span class="absolute bottom-0 left-1/2 top-0 border-l border-dashed border-white/15 lg:bottom-auto lg:left-0 lg:right-0 lg:top-1/2 lg:border-l-0 lg:border-t"></span>
+      <span class="relative grid size-11 place-items-center border border-white/20 bg-black text-white">
+        <AeroplaneLogo class="size-5 rotate-[135deg] lg:rotate-45" />
+      </span>
+      <span class="absolute bottom-2 left-1/2 -translate-x-1/2 font-mono text-[10px] text-zinc-600 lg:hidden">↓</span>
+      <span class="absolute right-2 top-1/2 hidden -translate-y-1/2 font-mono text-[10px] text-zinc-600 lg:block">→</span>
     </div>
+
+    <section class="min-w-0">
+      <header class="flex items-center justify-between gap-3 border-b border-white/10 p-4">
+        <div class="flex min-w-0 items-center gap-3">
+          <span class="grid size-10 shrink-0 place-items-center border border-white/10 text-white">
+            <AeroplaneLogo class="size-5" />
+          </span>
+          <div class="min-w-0">
+            <p class="m-0 truncate text-xs text-zinc-200">Aeroplane stack</p>
+            <p class="mb-0 mt-1 font-mono text-[8px] uppercase tracking-[0.13em] text-zinc-700">self-hosted</p>
+          </div>
+        </div>
+        <span class="inline-flex items-center gap-2 font-mono text-[8px] uppercase tracking-[0.13em] text-emerald-300">
+          <span class="status-dot"></span>migrated
+        </span>
+      </header>
+
+      <div class="p-4">
+        <div class="divide-y divide-white/10 border border-white/10 bg-black">
+          {targetServices.map((service, index) => (
+            <div class="grid grid-cols-[28px_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3">
+              <span class="font-mono text-[7px] text-zinc-800">{String(index + 1).padStart(2, "0")}</span>
+              <div class="min-w-0">
+                <p class="m-0 truncate font-mono text-[9px] text-zinc-300">{service.name}</p>
+                <p class="mb-0 mt-1 font-mono text-[7px] uppercase tracking-[0.12em] text-zinc-700">{service.type}</p>
+              </div>
+              <span class="font-mono text-[7px] uppercase tracking-[0.12em] text-zinc-500">{service.status}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   </div>
 </div>
