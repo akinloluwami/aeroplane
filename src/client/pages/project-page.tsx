@@ -122,7 +122,7 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
   usePageTitle(projectTitle);
 
   const visibleServices = useMemo(() => {
-    const needle = serviceSearch.trim().toLocaleLowerCase();
+    const needle = serviceSearch.trim().toLowerCase();
     if (!currentProject || !needle) return currentProject?.services ?? [];
 
     return currentProject.services.filter((service) =>
@@ -142,7 +142,7 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
       ]
         .filter(Boolean)
         .join(" ")
-        .toLocaleLowerCase()
+        .toLowerCase()
         .includes(needle),
     );
   }, [currentProject, serviceSearch]);
