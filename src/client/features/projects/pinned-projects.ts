@@ -6,7 +6,7 @@ export function readPinnedProjectIds() {
     if (!stored) return [];
 
     const value: unknown = JSON.parse(stored);
-    return Array.isArray(value)
+    return value !== null && Array.isArray(value)
       ? value.filter((projectId): projectId is string => typeof projectId === "string")
       : [];
   } catch {
