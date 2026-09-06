@@ -85,6 +85,7 @@ function settingsFromService(service: Service): ServiceSettingsState {
     staticOutput: service.staticOutput ?? "",
     buildMethod: service.buildMethod,
     dockerfilePath: service.dockerfilePath ?? "",
+    persistentVolumePath: service.persistentVolumePath ?? "",
     runtimeMode: service.runtimeMode,
     internalPort: service.internalPort,
     databasePublicEnabled: service.databasePublicEnabled,
@@ -156,6 +157,7 @@ export function ServicePageShell({
     staticOutput: "",
     buildMethod: "auto" as "auto" | "railpack" | "dockerfile",
     dockerfilePath: "",
+    persistentVolumePath: "",
     runtimeMode: "web" as "web" | "worker",
     internalPort: 8080,
     databasePublicEnabled: true,
@@ -467,6 +469,7 @@ export function ServicePageShell({
       startCommand: formValue(form, "startCommand", settings.startCommand),
       staticOutput: formValue(form, "staticOutput", settings.staticOutput),
       dockerfilePath: formValue(form, "dockerfilePath", settings.dockerfilePath),
+      persistentVolumePath: formValue(form, "persistentVolumePath", settings.persistentVolumePath),
       internalPort: formNumberValue(form, "internalPort", settings.internalPort),
       databasePublicHostname: formValue(form, "databasePublicHostname", settings.databasePublicHostname)
     };
@@ -497,6 +500,7 @@ export function ServicePageShell({
         staticOutput: isDatabase || isDockerImage || isFunction ? undefined : textOrNull(submittedSettings.staticOutput),
         buildMethod: isDatabase || isDockerImage || isFunction ? undefined : submittedSettings.buildMethod,
         dockerfilePath: isDatabase || isDockerImage || isFunction ? undefined : textOrNull(submittedSettings.dockerfilePath),
+        persistentVolumePath: isDatabase || isFunction || submittedSettings.staticOutput ? null : textOrNull(submittedSettings.persistentVolumePath),
         runtimeMode: isDatabase ? undefined : submittedSettings.runtimeMode,
         internalPort: Number(submittedSettings.internalPort),
         databasePublicEnabled: isDatabase ? true : undefined,
