@@ -177,13 +177,11 @@ export function ProjectsPage() {
   }
 
   function togglePinnedProject(projectId: string) {
-    setPinnedProjectIds((current) => {
-      const next = current.includes(projectId)
-        ? current.filter((id) => id !== projectId)
-        : [...current, projectId];
-      writePinnedProjectIds(next);
-      return next;
-    });
+    const next = pinnedProjectIds.includes(projectId)
+      ? pinnedProjectIds.filter((id) => id !== projectId)
+      : [...pinnedProjectIds, projectId];
+    writePinnedProjectIds(next);
+    setPinnedProjectIds(next);
   }
 
   const owner = currentUser?.role === "owner";
@@ -192,7 +190,7 @@ export function ProjectsPage() {
     0,
   );
   const visibleProjects = useMemo(() => {
-    const needle = projectSearch.trim().toLocaleLowerCase();
+    const needle = projectSearch.trim().toLowerCase();
     const filtered = needle
       ? projects.filter((project) => {
           const searchableText = [
@@ -202,13 +200,21 @@ export function ProjectsPage() {
             ...project.services.flatMap((service) => [
               service.name,
               service.slug,
+              service.status,
               service.repoFullName,
+              service.repoUrl,
+              service.dockerImage,
+              service.branch,
+              service.rootDir,
+              service.primaryUrl,
+              service.localUrl,
               service.framework?.name,
+              service.functionRuntime,
             ]),
           ]
             .filter(Boolean)
             .join(" ")
-            .toLocaleLowerCase();
+            .toLowerCase();
           return searchableText.includes(needle);
         })
       : projects;
