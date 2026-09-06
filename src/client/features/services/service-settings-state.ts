@@ -12,6 +12,7 @@ export type ServiceSettingsState = {
   staticOutput: string;
   buildMethod: "auto" | "railpack" | "dockerfile";
   dockerfilePath: string;
+  persistentVolumePath: string;
   runtimeMode: "web" | "worker";
   internalPort: number;
   databasePublicEnabled: boolean;
