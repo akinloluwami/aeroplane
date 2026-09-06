@@ -176,6 +176,25 @@ export function ApplicationServiceSettingsPanel({
         </div>
       ) : null}
 
+      {!settings.staticOutput ? (
+        <div className="xl:col-span-2">
+          <FieldLabel>Persistent volume path</FieldLabel>
+          <FormInput
+            name="persistentVolumePath"
+            value={settings.persistentVolumePath}
+            onChange={(event) => onChange({ persistentVolumePath: event.target.value })}
+            placeholder="/data"
+            variant="monochrome"
+            className={`${inputClass} font-mono`}
+          />
+          <p className="mt-2 text-xs leading-5 text-zinc-500">
+            Mounts a service-specific Docker volume at this absolute container path. Stateful redeployments briefly stop the previous container to protect writable data.
+          </p>
+        </div>
+      ) : (
+        <input type="hidden" name="persistentVolumePath" value="" />
+      )}
+
       <div className="xl:col-span-2">
         <FieldLabel>Build method</FieldLabel>
         <BuildMethodControl value={settings.buildMethod} onChange={(buildMethod) => onChange({ buildMethod })} />

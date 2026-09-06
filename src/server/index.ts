@@ -16,6 +16,7 @@ import { Readable } from "node:stream";
 import { basename, join, resolve } from "node:path";
 import { z } from "zod";
 import { config } from "./config.js";
+import { isValidApplicationVolumePath } from "./application-volume.js";
 import { isPostgresFamilyDatabase } from "./database-engine.js";
 import { abortDeployment, allocateHostPort, containerNameForService, enqueueDeployment, getServiceById, removeServiceRuntime, startDeployWorker, staticSiteDirForService } from "./deploy.js";
 import { db, nowIso } from "./db.js";
@@ -206,6 +207,22 @@ const clearableDockerfilePath = z.preprocess((value) => {
   (value) => value === undefined || value === null || !value.split("/").includes(".."),
   { message: "Invalid Dockerfile path" }
 );
+const persistentVolumePath = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim().replace(/\/+$/g, "");
+  return trimmed || undefined;
+}, z.string().max(4096).optional()).refine(
+  (value) => value === undefined || isValidApplicationVolumePath(value),
+  { message: "Persistent volume path must be a normalized absolute container path below /" }
+);
+const clearablePersistentVolumePath = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim().replace(/\/+$/g, "");
+  return trimmed || null;
+}, z.string().max(4096).nullable().optional()).refine(
+  (value) => value === undefined || value === null || isValidApplicationVolumePath(value),
+  { message: "Persistent volume path must be a normalized absolute container path below /" }
+);
 const repoSchema = z.string().trim().min(1).refine((value) => {
   return value.startsWith("https://") || value.startsWith("git@") || value === "database" || value === DOCKER_IMAGE_REPO_URL || value === FUNCTION_REPO_URL;
 }, {
@@ -257,6 +274,7 @@ const serviceSettingsSchema = z.object({
   staticOutput: optionalString,
   buildMethod: z.enum(serviceBuildMethods).optional(),
   dockerfilePath: optionalDockerfilePath,
+  persistentVolumePath,
   runtimeMode: serviceRuntimeModeSchema,
   internalPort: z.coerce.number().int().min(1).max(65535).default(8080),
   databasePublicEnabled: z.boolean().optional().default(true),
@@ -495,6 +513,7 @@ const updateServiceSchema = z.object({
   staticOutput: clearableString,
   buildMethod: z.enum(serviceBuildMethods).optional(),
   dockerfilePath: clearableDockerfilePath,
+  persistentVolumePath: clearablePersistentVolumePath,
   runtimeMode: z.enum(serviceRuntimeModes).optional(),
   internalPort: z.coerce.number().int().min(1).max(65535).optional(),
   databasePublicEnabled: z.boolean().optional(),
@@ -831,6 +850,7 @@ async function publicService(service: Service, options: PublicServiceOptions = {
     staticOutput: service.staticOutput,
     buildMethod: normalizeServiceBuildMethod(service.buildMethod),
     dockerfilePath: service.dockerfilePath,
+    persistentVolumePath: service.persistentVolumePath,
     detectedBuildMethod: service.detectedBuildMethod,
     runtimeMode: normalizeServiceRuntimeMode(service.runtimeMode),
     internalPort: service.internalPort,
@@ -915,6 +935,7 @@ function createServiceRecord(projectId: string, input: z.infer<typeof createServ
     staticOutput: isFunction ? null : input.staticOutput ?? null,
     buildMethod: isFunction ? "dockerfile" : input.buildMethod ?? "auto",
     dockerfilePath: isFunction ? "Dockerfile" : input.dockerfilePath ?? null,
+    persistentVolumePath: isDatabase || isFunction || input.staticOutput ? null : input.persistentVolumePath ?? null,
     detectedBuildMethod: null,
     runtimeMode: isDatabase || input.staticOutput ? "web" : input.runtimeMode,
     internalPort: input.internalPort,
@@ -2861,6 +2882,7 @@ app.patch("/api/services/:serviceId", async (c) => {
     repoUrl = DOCKER_IMAGE_REPO_URL;
   }
   const nextIsDatabase = isDatabaseService({ repoFullName, repoUrl });
+  const nextIsFunction = isFunctionService({ repoFullName, repoUrl });
   const nextDatabaseType = nextIsDatabase ? databaseTypeForService({ repoFullName, repoUrl }) : "";
   const databasePublicEnabled = nextIsDatabase;
   const databasePublicHostname = nextIsDatabase
@@ -2871,6 +2893,11 @@ app.patch("/api/services/:serviceId", async (c) => {
       ? updateData.postgresLogicalReplicationEnabled ?? service.postgresLogicalReplicationEnabled
       : false;
   const nextStaticOutput = updateData.staticOutput === undefined ? service.staticOutput : updateData.staticOutput;
+  const nextPersistentVolumePath = nextIsDatabase || nextIsFunction || nextStaticOutput
+    ? null
+    : updateData.persistentVolumePath === undefined
+      ? service.persistentVolumePath
+      : updateData.persistentVolumePath;
   const runtimeMode = nextIsDatabase || nextStaticOutput
     ? "web"
     : normalizeServiceRuntimeMode(updateData.runtimeMode ?? service.runtimeMode);
@@ -2881,6 +2908,7 @@ app.patch("/api/services/:serviceId", async (c) => {
       repoFullName,
       repoUrl,
       githubToken: updateData.githubToken === undefined ? service.githubToken : updateData.githubToken ?? null,
+      persistentVolumePath: nextPersistentVolumePath,
       runtimeMode,
       ...(runtimeMode === "worker" ? { activePort: null } : {}),
       databasePublicEnabled,

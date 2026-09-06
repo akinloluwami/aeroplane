@@ -36,6 +36,7 @@ export type Service = {
   staticOutput: null | string;
   buildMethod: ServiceBuildMethod;
   dockerfilePath: null | string;
+  persistentVolumePath: null | string;
   detectedBuildMethod: null | "railpack" | "dockerfile";
   runtimeMode: ServiceRuntimeMode;
   internalPort: number;

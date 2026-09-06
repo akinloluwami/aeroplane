@@ -11,6 +11,7 @@ type DockerImageServiceSettings = {
   dockerImage: string;
   runtimeMode: "web" | "worker";
   internalPort: number;
+  persistentVolumePath: string;
 };
 
 export function DockerImageServiceSettingsPanel({
@@ -62,6 +63,21 @@ export function DockerImageServiceSettingsPanel({
         ) : (
           <p className="mt-2 text-xs text-zinc-500">Private images use the host Docker daemon's registry login.</p>
         )}
+      </div>
+      <div className="xl:col-span-2">
+        <label htmlFor="docker-persistent-volume-path" className={settingsLabelClass}>Persistent volume path</label>
+        <FormInput
+          id="docker-persistent-volume-path"
+          name="persistentVolumePath"
+          value={settings.persistentVolumePath}
+          onChange={(event) => onChange({ persistentVolumePath: event.target.value })}
+          placeholder="/data"
+          variant="monochrome"
+          className={`${settingsInputClass} font-mono`}
+        />
+        <p className="mt-2 text-xs leading-5 text-zinc-500">
+          Mounts a service-specific Docker volume at this absolute container path. Stateful redeployments briefly stop the previous container to protect writable data.
+        </p>
       </div>
     </>
   );

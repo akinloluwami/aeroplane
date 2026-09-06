@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS projects (
   static_output TEXT,
   build_method TEXT NOT NULL DEFAULT 'auto',
   dockerfile_path TEXT,
+  persistent_volume_path TEXT,
   detected_build_method TEXT,
   runtime_mode TEXT NOT NULL DEFAULT 'web',
   internal_port INTEGER NOT NULL,
@@ -267,6 +268,10 @@ if (!hasColumn("projects", "build_method")) {
 
 if (!hasColumn("projects", "dockerfile_path")) {
   sqlite.exec("ALTER TABLE projects ADD COLUMN dockerfile_path TEXT");
+}
+
+if (!hasColumn("projects", "persistent_volume_path")) {
+  sqlite.exec("ALTER TABLE projects ADD COLUMN persistent_volume_path TEXT");
 }
 
 if (!hasColumn("projects", "detected_build_method")) {

@@ -55,7 +55,7 @@ export function dockerReclaimableDetail(info: SystemMaintenanceInfo | null) {
   }
 
   if (rowType.includes("volume")) {
-    return `${amount} is volume data. Volume cleanup is separate because old database data can live there.`;
+    return `${amount} is volume data. Volume cleanup is separate because persistent service or database data can live there.`;
   }
 
   if (rowType.includes("build")) {

@@ -72,7 +72,7 @@ export function MaintenanceCleanupCard({
 
         {confirmVolumes ? (
           <div className="border-l-2 border-rose-400 bg-rose-400/10 p-3">
-            <p className="text-xs leading-relaxed text-rose-100">Delete unused Docker volumes? This will not remove attached volumes, but it can delete old database data left behind by removed containers.</p>
+            <p className="text-xs leading-relaxed text-rose-100">Delete unused Docker volumes? This will not remove attached volumes, but it can delete persistent service or database data left behind by removed containers.</p>
             <div className="mt-3 flex gap-2">
               <button type="button" className="inline-flex h-9 items-center justify-center gap-2 border border-rose-400/50 px-3 text-sm text-rose-200 transition hover:bg-rose-400/10 disabled:opacity-50" onClick={() => onRunCleanup("volumes", ["docker-volumes"])} disabled={Boolean(cleanupMode)}>
                 <AppIcon icon={Delete02Icon} size={14} className={cleanupMode === "volumes" ? "animate-spin" : ""} />
