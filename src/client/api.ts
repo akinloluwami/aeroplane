@@ -533,6 +533,7 @@ export type SystemUpdateInfo = {
 
 export type MaintenanceCleanupTarget =
   | "docker-containers"
+  | "docker-networks"
   | "docker-images"
   | "docker-build-cache"
   | "docker-volumes"
