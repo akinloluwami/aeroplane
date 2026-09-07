@@ -8,6 +8,7 @@ import { ensureDefaultDomainForService } from "./service-domains.js";
 import { recordServiceImportSource } from "./service-import-sources.js";
 import { repoUrlFromFullName } from "./github-connect.js";
 import { fetchVercel } from "./vercel-api.js";
+import { createDefaultProjectEnvironments } from "./project-environments.js";
 
 type VercelGitLink = {
   type?: string | null;
@@ -283,6 +284,7 @@ export async function importVercelProject(
       updatedAt: timestamp
     })
     .run();
+  const { defaultEnvironment } = createDefaultProjectEnvironments(projectGroupId, timestamp);
 
   const serviceSlug = uniqueSlug(
     project.name,
@@ -304,6 +306,7 @@ export async function importVercelProject(
     .values({
       id: targetServiceId,
       projectId: projectGroupId,
+      environmentId: defaultEnvironment.id,
       slug: serviceSlug,
       name: project.name,
       repoFullName: classification.repoFullName ?? null,
