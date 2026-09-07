@@ -3,6 +3,7 @@ import { formatBytes } from "../../lib/format";
 
 export const safeCleanupTargets = [
   "docker-containers",
+  "docker-networks",
   "docker-images",
   "docker-build-cache",
   "apt-cache",
