@@ -20,6 +20,7 @@ export type ServiceBuildMethod = "auto" | "railpack" | "dockerfile";
 export type Service = {
   id: string;
   projectId: string;
+  environmentId: string;
   name: string;
   slug: string;
   repoFullName: null | string;
@@ -55,6 +56,16 @@ export type Service = {
   updatedAt: string;
 };
 
+export type ProjectEnvironment = {
+  id: string;
+  projectId: string;
+  name: string;
+  slug: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ProjectCard = {
   id: string;
   name: string;
@@ -63,6 +74,7 @@ export type ProjectCard = {
   status: string;
   serviceCount: number;
   lastUpdatedAt: string;
+  environments: ProjectEnvironment[];
   services: Service[];
 };
 
@@ -740,6 +752,8 @@ export const api = {
   createProject: (body: unknown) => request<{ project: ProjectDetail }>("/api/projects", { method: "POST", body: JSON.stringify(body) }),
   updateProject: (projectId: string, body: unknown) =>
     request<{ project: ProjectDetail }>(`/api/projects/${projectId}`, { method: "PATCH", body: JSON.stringify(body) }),
+  createProjectEnvironment: (projectId: string, body: { name: string }) =>
+    request<{ environment: ProjectEnvironment }>(`/api/projects/${projectId}/environments`, { method: "POST", body: JSON.stringify(body) }),
   createService: (projectId: string, body: unknown) =>
     request<{ service: Service }>(`/api/projects/${projectId}/services`, { method: "POST", body: JSON.stringify(body) }),
   projectDatabaseVariableSuggestions: (projectId: string) =>
@@ -759,6 +773,8 @@ export const api = {
     request<{ service: Service }>(`/api/services/${serviceId}`, { method: "PATCH", body: JSON.stringify(body) }),
   transferService: (serviceId: string, body: { targetProjectId: string }) =>
     request<{ service: Service; project: ProjectDetail }>(`/api/services/${serviceId}/transfer`, { method: "POST", body: JSON.stringify(body) }),
+  moveServiceToEnvironment: (serviceId: string, body: { environmentId: string }) =>
+    request<{ service: Service | null }>(`/api/services/${serviceId}/environment`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteService: (serviceId: string) => request(`/api/services/${serviceId}`, { method: "DELETE" }),
   createDeployment: (serviceId: string) =>
     request<{ deployment: Deployment }>(`/api/services/${serviceId}/deployments`, { method: "POST" }),
