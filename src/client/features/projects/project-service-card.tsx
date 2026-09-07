@@ -2,13 +2,14 @@ import {
   ArrowRight02Icon,
   CloudServerIcon,
   FolderOpenIcon,
+  FolderTransferIcon,
   FunctionIcon,
   GitBranchIcon,
   GithubIcon,
   Globe02Icon,
   PackageIcon
 } from "@hugeicons/core-free-icons";
-import type { Service } from "../../api";
+import type { ProjectEnvironment, Service } from "../../api";
 import { AppIcon, FrameworkMark } from "../../components/ui/primitives";
 import { formatTime } from "../../lib/format";
 import { dockerImageForService, isDatabaseService, isDockerImageService } from "../../../shared/service-source";
@@ -32,9 +33,15 @@ function statusTone(status: string) {
 
 export function ProjectServiceCard({
   service,
+  environment,
+  canMoveEnvironment,
+  onMoveEnvironment,
   onOpen
 }: {
   service: Service;
+  environment: ProjectEnvironment;
+  canMoveEnvironment: boolean;
+  onMoveEnvironment: () => void;
   onOpen: () => void;
 }) {
   const isDatabase = isDatabaseService(service);
@@ -141,9 +148,26 @@ export function ProjectServiceCard({
             {formatTime(service.lastDeployedAt ?? service.updatedAt)}
           </p>
         </div>
-        <span className="grid h-8 w-8 shrink-0 place-items-center border border-white/10 text-zinc-600 transition group-hover:border-white group-hover:bg-white group-hover:text-black">
-          <AppIcon icon={ArrowRight02Icon} size={14} />
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex h-8 max-w-32 items-center gap-1.5 border border-white/10 px-2.5 font-mono text-[9px] text-zinc-500 transition hover:border-white/35 hover:bg-white/[0.05] hover:text-white disabled:cursor-default disabled:opacity-50"
+            onClick={(event) => {
+              event.stopPropagation();
+              onMoveEnvironment();
+            }}
+            onKeyDown={(event) => event.stopPropagation()}
+            disabled={!canMoveEnvironment}
+            aria-label={`Move ${service.name} from ${environment.name}`}
+            title={canMoveEnvironment ? `Move from ${environment.name}` : environment.name}
+          >
+            <AppIcon icon={FolderTransferIcon} size={12} className="shrink-0" />
+            <span className="truncate">{environment.name}</span>
+          </button>
+          <span className="grid h-8 w-8 shrink-0 place-items-center border border-white/10 text-zinc-600 transition group-hover:border-white group-hover:bg-white group-hover:text-black">
+            <AppIcon icon={ArrowRight02Icon} size={14} />
+          </span>
+        </div>
       </div>
     </article>
   );
