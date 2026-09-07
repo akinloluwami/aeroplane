@@ -53,6 +53,10 @@ export function ServiceCardActions({
         event.stopPropagation();
         if (event.key === "Escape") setOpen(false);
       }}
+      onDragStart={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
     >
       <button
         type="button"
