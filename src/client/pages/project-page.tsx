@@ -12,12 +12,15 @@ import {
   useMemo,
   useState,
 } from "react";
-import { api, type ProjectCard, type ProjectDetail, type ToolCheck } from "../api";
+import { api, type ProjectCard, type ProjectDetail, type Service, type ToolCheck } from "../api";
 import { useAuthStatus } from "../components/auth/auth-context";
 import { AppIcon } from "../components/ui/primitives";
 import { CreateServiceModal } from "../components/modals/create-service-modal";
 import { DeleteProjectModal } from "../components/modals/delete-project-modal";
 import { EditProjectModal } from "../features/projects/edit-project-modal";
+import { CreateEnvironmentModal } from "../features/projects/create-environment-modal";
+import { MoveServiceEnvironmentModal } from "../features/projects/move-service-environment-modal";
+import { ProjectEnvironmentTabs } from "../features/projects/project-environment-tabs";
 import { ProjectPageToolbar } from "../features/projects/project-page-toolbar";
 import { ProjectRouteLoader } from "../features/projects/project-route-loader";
 import { ProjectServiceCard } from "../features/projects/project-service-card";
@@ -35,6 +38,9 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
   const [projects, setProjects] = useState<ProjectCard[]>([]);
   const [tools, setTools] = useState<ToolCheck[]>([]);
   const [createServiceOpen, setCreateServiceOpen] = useState(false);
+  const [createEnvironmentOpen, setCreateEnvironmentOpen] = useState(false);
+  const [movingService, setMovingService] = useState<Service | null>(null);
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState("");
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
   const [deletingProject, setDeletingProject] = useState(false);
   const [editingProject, setEditingProject] = useState(false);
@@ -47,6 +53,13 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
   const currentProject = project?.slug === projectSlug ? project : null;
   const currentUser = authStatus?.user ?? null;
   const owner = currentUser?.role === "owner";
+  const selectedEnvironment = useMemo(() => {
+    if (!currentProject) return null;
+    return currentProject.environments.find((environment) => environment.id === selectedEnvironmentId)
+      ?? currentProject.environments.find((environment) => environment.isDefault)
+      ?? currentProject.environments[0]
+      ?? null;
+  }, [currentProject, selectedEnvironmentId]);
 
   const loadProject = useCallback(async () => {
     try {
@@ -74,6 +87,7 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
     setProject(null);
     setProjects([]);
     setServiceSearch("");
+    setSelectedEnvironmentId("");
     setLoading(true);
     void loadProject();
   }, [loadProject, projectSlug]);
@@ -121,11 +135,16 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
   const projectTitle = currentProject?.name ?? projectSlug;
   usePageTitle(projectTitle);
 
+  const environmentServices = useMemo(() => {
+    if (!currentProject || !selectedEnvironment) return [];
+    return currentProject.services.filter((service) => service.environmentId === selectedEnvironment.id);
+  }, [currentProject, selectedEnvironment]);
+
   const visibleServices = useMemo(() => {
     const needle = serviceSearch.trim().toLowerCase();
-    if (!currentProject || !needle) return currentProject?.services ?? [];
+    if (!needle) return environmentServices;
 
-    return currentProject.services.filter((service) =>
+    return environmentServices.filter((service) =>
       [
         service.name,
         service.slug,
@@ -145,11 +164,15 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
         .toLowerCase()
         .includes(needle),
     );
-  }, [currentProject, serviceSearch]);
+  }, [environmentServices, serviceSearch]);
 
   async function createService(payload: ServiceFormPayload) {
     if (!currentProject) return;
-    const result = await api.createService(currentProject.id, payload);
+    if (!selectedEnvironment) return;
+    const result = await api.createService(currentProject.id, {
+      ...payload,
+      environmentId: selectedEnvironment.id
+    });
     await api.createDeployment(result.service.id);
     await loadProject();
     void navigate({
@@ -160,6 +183,21 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
         serviceTab: "deployments",
       },
     });
+  }
+
+  async function createEnvironment(name: string) {
+    if (!currentProject) return;
+    const result = await api.createProjectEnvironment(currentProject.id, { name });
+    setSelectedEnvironmentId(result.environment.id);
+    setCreateEnvironmentOpen(false);
+    await loadProject();
+  }
+
+  async function moveServiceToEnvironment(environmentId: string) {
+    if (!movingService) return;
+    await api.moveServiceToEnvironment(movingService.id, { environmentId });
+    setMovingService(null);
+    await loadProject();
   }
 
   function navigateToProjects() {
@@ -268,7 +306,7 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
                           type="button"
                           className="inline-flex h-10 items-center justify-center gap-2 bg-white px-4 text-sm text-black transition hover:bg-zinc-200 disabled:opacity-50"
                           onClick={() => setCreateServiceOpen(true)}
-                          disabled={!currentProject}
+                          disabled={!currentProject || !selectedEnvironment}
                         >
                           <AppIcon icon={Add01Icon} size={15} />
                           New service
@@ -293,46 +331,61 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
                   ) : null}
 
                   <div className="mt-6">
-                    {currentProject && currentProject.services.length === 0 ? (
-                      <section className="flex min-h-72 items-center justify-center border border-white/10 bg-black px-6 py-12 text-center">
-                        <div>
-                          <AppIcon icon={CloudServerIcon} size={22} className="mx-auto text-zinc-600" />
-                          <h2 className="mt-4 text-lg text-zinc-100">No services</h2>
-                          <p className="mt-1.5 text-sm text-zinc-600">Add the first service to this project.</p>
-                          <button
-                            type="button"
-                            className="mt-5 inline-flex h-9 items-center justify-center gap-2 bg-white px-4 text-sm text-black transition hover:bg-zinc-200"
-                            onClick={() => setCreateServiceOpen(true)}
-                          >
-                            <AppIcon icon={Add01Icon} size={14} />
-                            Add service
-                          </button>
-                        </div>
-                      </section>
-                    ) : currentProject ? (
+                    {currentProject && selectedEnvironment ? (
                       <>
-                        <ServiceSearch
-                          query={serviceSearch}
-                          resultCount={visibleServices.length}
-                          totalCount={currentProject.services.length}
-                          onQueryChange={setServiceSearch}
+                        <ProjectEnvironmentTabs
+                          environments={currentProject.environments}
+                          services={currentProject.services}
+                          selectedEnvironmentId={selectedEnvironment.id}
+                          onSelect={setSelectedEnvironmentId}
+                          onCreate={() => setCreateEnvironmentOpen(true)}
                         />
 
-                        {visibleServices.length === 0 ? (
-                          <ServiceSearchEmptyState
-                            query={serviceSearch.trim()}
-                            onClear={() => setServiceSearch("")}
-                          />
-                        ) : (
-                          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                            {visibleServices.map((service) => (
-                              <ProjectServiceCard
-                                key={service.id}
-                                service={service}
-                                onOpen={() => navigateToServiceOverview(service.slug)}
-                              />
-                            ))}
+                        {environmentServices.length === 0 ? (
+                          <section className="flex min-h-72 items-center justify-center border border-white/10 bg-black px-6 py-12 text-center">
+                            <div>
+                              <AppIcon icon={CloudServerIcon} size={22} className="mx-auto text-zinc-600" />
+                              <h2 className="mt-4 text-lg text-zinc-100">No services in {selectedEnvironment.name}</h2>
+                              <p className="mt-1.5 text-sm text-zinc-600">Add a service here or move one from another environment.</p>
+                              <button
+                                type="button"
+                                className="mt-5 inline-flex h-9 items-center justify-center gap-2 bg-white px-4 text-sm text-black transition hover:bg-zinc-200"
+                                onClick={() => setCreateServiceOpen(true)}
+                              >
+                                <AppIcon icon={Add01Icon} size={14} />
+                                Add service
+                              </button>
+                            </div>
                           </section>
+                        ) : (
+                          <>
+                            <ServiceSearch
+                              query={serviceSearch}
+                              resultCount={visibleServices.length}
+                              totalCount={environmentServices.length}
+                              onQueryChange={setServiceSearch}
+                            />
+
+                            {visibleServices.length === 0 ? (
+                              <ServiceSearchEmptyState
+                                query={serviceSearch.trim()}
+                                onClear={() => setServiceSearch("")}
+                              />
+                            ) : (
+                              <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                {visibleServices.map((service) => (
+                                  <ProjectServiceCard
+                                    key={service.id}
+                                    service={service}
+                                    environment={selectedEnvironment}
+                                    canMoveEnvironment={currentProject.environments.length > 1}
+                                    onMoveEnvironment={() => setMovingService(service)}
+                                    onOpen={() => navigateToServiceOverview(service.slug)}
+                                  />
+                                ))}
+                              </section>
+                            )}
+                          </>
                         )}
                       </>
                     ) : null}
@@ -349,6 +402,19 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
         open={createServiceOpen}
         onClose={() => setCreateServiceOpen(false)}
         onCreate={createService}
+      />
+      <CreateEnvironmentModal
+        open={createEnvironmentOpen}
+        onClose={() => setCreateEnvironmentOpen(false)}
+        onCreate={createEnvironment}
+      />
+      <MoveServiceEnvironmentModal
+        open={Boolean(movingService)}
+        serviceName={movingService?.name ?? "Service"}
+        currentEnvironmentId={movingService?.environmentId ?? ""}
+        environments={currentProject?.environments ?? []}
+        onClose={() => setMovingService(null)}
+        onMove={moveServiceToEnvironment}
       />
       <DeleteProjectModal
         open={deleteProjectOpen}
