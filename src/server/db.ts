@@ -27,9 +27,21 @@ CREATE TABLE IF NOT EXISTS project_groups (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS project_environments (
+  id TEXT PRIMARY KEY,
+  project_group_id TEXT NOT NULL REFERENCES project_groups(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  is_default INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(project_group_id, slug)
+);
+
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
   project_group_id TEXT,
+  environment_id TEXT NOT NULL REFERENCES project_environments(id),
   slug TEXT,
   name TEXT NOT NULL,
   repo_full_name TEXT,
@@ -222,6 +234,10 @@ if (!hasColumn("projects", "project_group_id")) {
   sqlite.exec("ALTER TABLE projects ADD COLUMN project_group_id TEXT");
 }
 
+if (!hasColumn("projects", "environment_id")) {
+  sqlite.exec("ALTER TABLE projects ADD COLUMN environment_id TEXT");
+}
+
 if (!hasColumn("project_groups", "owner_user_id")) {
   sqlite.exec("ALTER TABLE project_groups ADD COLUMN owner_user_id TEXT");
 }
@@ -303,7 +319,10 @@ CREATE INDEX IF NOT EXISTS idx_logs_deployment_created ON deployment_logs(deploy
 CREATE INDEX IF NOT EXISTS idx_env_project_key ON env_vars(project_id, key);
 CREATE INDEX IF NOT EXISTS idx_project_groups_slug ON project_groups(slug);
 CREATE INDEX IF NOT EXISTS idx_project_groups_owner ON project_groups(owner_user_id);
+CREATE INDEX IF NOT EXISTS idx_project_environments_project ON project_environments(project_group_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_project_environments_project_slug ON project_environments(project_group_id, slug);
 CREATE INDEX IF NOT EXISTS idx_services_project_group ON projects(project_group_id);
+CREATE INDEX IF NOT EXISTS idx_services_environment ON projects(environment_id);
 CREATE INDEX IF NOT EXISTS idx_services_slug ON projects(slug);
 CREATE INDEX IF NOT EXISTS idx_database_backups_service_created ON database_backups(project_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_database_backups_service_trigger_created ON database_backups(project_id, trigger, created_at DESC);
@@ -377,6 +396,41 @@ for (const service of serviceRows) {
   sqlite
     .prepare("UPDATE projects SET project_group_id = ?, slug = ?, repo_full_name = COALESCE(repo_full_name, ?) WHERE id = ?")
     .run(projectGroupId, serviceSlug, repoFullName, service.id);
+}
+
+const environmentProjectRows = sqlite
+  .prepare("SELECT id, created_at, updated_at FROM project_groups")
+  .all() as Array<{ id: string; created_at: string; updated_at: string }>;
+
+for (const project of environmentProjectRows) {
+  const existing = sqlite
+    .prepare("SELECT id, slug FROM project_environments WHERE project_group_id = ?")
+    .all(project.id) as Array<{ id: string; slug: string }>;
+  let production = existing.find((environment) => environment.slug === "production");
+  if (!production) {
+    production = { id: nanoid(10), slug: "production" };
+    sqlite
+      .prepare("INSERT INTO project_environments (id, project_group_id, name, slug, is_default, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .run(production.id, project.id, "Production", production.slug, 1, project.created_at, project.updated_at);
+  }
+
+  if (!existing.some((environment) => environment.slug === "development")) {
+    sqlite
+      .prepare("INSERT INTO project_environments (id, project_group_id, name, slug, is_default, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .run(nanoid(10), project.id, "Development", "development", 0, project.created_at, project.updated_at);
+  }
+
+  sqlite.prepare("UPDATE project_environments SET is_default = CASE WHEN id = ? THEN 1 ELSE 0 END WHERE project_group_id = ?").run(production.id, project.id);
+  sqlite
+    .prepare(`UPDATE projects
+      SET environment_id = ?
+      WHERE project_group_id = ?
+        AND (environment_id IS NULL OR NOT EXISTS (
+          SELECT 1 FROM project_environments
+          WHERE project_environments.id = projects.environment_id
+            AND project_environments.project_group_id = projects.project_group_id
+        ))`)
+    .run(production.id, project.id);
 }
 
 export const db = drizzle(sqlite, { schema });
