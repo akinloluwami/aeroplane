@@ -6,6 +6,7 @@ import { config } from "./config.js";
 
 export const maintenanceCleanupTargets = [
   "docker-containers",
+  "docker-networks",
   "docker-images",
   "docker-build-cache",
   "docker-volumes",
@@ -357,6 +358,11 @@ async function runCleanupTarget(target: MaintenanceCleanupTarget): Promise<Maint
       label: "Stopped Docker containers",
       command: "docker",
       args: ["container", "prune", "-f"]
+    },
+    "docker-networks": {
+      label: "Unused Docker networks",
+      command: "docker",
+      args: ["network", "prune", "-f"]
     },
     "docker-images": {
       label: "Unused Docker images",

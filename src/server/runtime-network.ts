@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { spawn } from "node:child_process";
 import { eq } from "drizzle-orm";
 import { config } from "./config.js";
 import { db } from "./db.js";
@@ -24,6 +25,11 @@ type ContainerInspect = {
 };
 
 const maxDockerNetworkNameLength = 63;
+const managedNetworkLabel = "io.aeroplane.managed=true";
+const projectNetworkLabel = "io.aeroplane.project";
+const projectNetworkSecondOctetStart = 64;
+const projectNetworkSecondOctetCount = 64;
+const projectNetworkCreationAttempts = 256;
 
 function safeDockerNetworkPart(value: string, fallback: string) {
   return value.replace(/[^a-zA-Z0-9_.-]+/g, "-").replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "") || fallback;
@@ -52,6 +58,27 @@ export function runtimeNetworkArgs(service: Pick<Service, "projectId" | "slug">)
   return ["--network", runtimeNetworkNameForService(service), "--network-alias", service.slug];
 }
 
+export function removeProjectRuntimeNetwork(projectId: string) {
+  const networkName = runtimeNetworkNameForProject(projectId);
+  return new Promise<void>((resolvePromise) => {
+    const child = spawn("docker", ["network", "rm", networkName], {
+      stdio: ["ignore", "ignore", "pipe"]
+    });
+    let errorOutput = "";
+
+    child.stderr.on("data", (chunk: Buffer) => {
+      errorOutput += chunk.toString();
+    });
+    child.on("error", () => resolvePromise());
+    child.on("close", (code) => {
+      if (code !== 0 && !/not found|no such network/i.test(errorOutput)) {
+        console.warn(`Could not remove Docker project runtime network ${networkName}: ${errorOutput.trim()}`);
+      }
+      resolvePromise();
+    });
+  });
+}
+
 function parseContainerInspect(stdout: string): ContainerInspect | null {
   try {
     const parsed = JSON.parse(stdout) as ContainerInspect[];
@@ -64,6 +91,48 @@ function parseContainerInspect(stdout: string): ContainerInspect | null {
 function isDockerAlreadyExistsError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return /already exists/i.test(message);
+}
+
+function isDockerSubnetConflictError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /pool overlaps|address.*already in use|overlap.*address space/i.test(message);
+}
+
+function projectNetworkSubnet(projectId: string, attempt: number) {
+  const subnetCount = projectNetworkSecondOctetCount * 256;
+  const seed = createHash("sha256").update(projectId).digest().readUInt16BE(0);
+  const subnetIndex = (seed + attempt) % subnetCount;
+  const secondOctet = projectNetworkSecondOctetStart + Math.floor(subnetIndex / 256);
+  const thirdOctet = subnetIndex % 256;
+  return `10.${secondOctet}.${thirdOctet}.0/24`;
+}
+
+async function createProjectRuntimeNetwork(service: RuntimeNetworkService, networkName: string, runDocker: RunDocker) {
+  let lastConflict: unknown = null;
+
+  for (let attempt = 0; attempt < projectNetworkCreationAttempts; attempt += 1) {
+    try {
+      await runDocker([
+        "network",
+        "create",
+        "--driver",
+        "bridge",
+        "--subnet",
+        projectNetworkSubnet(service.projectId, attempt),
+        "--label",
+        managedNetworkLabel,
+        "--label",
+        `${projectNetworkLabel}=${service.projectId}`,
+        networkName
+      ]);
+      return;
+    } catch (error) {
+      if (!isDockerSubnetConflictError(error)) throw error;
+      lastConflict = error;
+    }
+  }
+
+  throw lastConflict ?? new Error(`Could not allocate a private subnet for ${networkName}`);
 }
 
 async function inspectContainer(containerName: string, runBufferedDocker: RunBufferedDocker) {
@@ -148,7 +217,8 @@ export async function ensureProjectRuntimeNetwork({
   if (existing.code !== 0) {
     log?.(`Creating Docker project runtime network ${networkName}.`);
     try {
-      await runDocker(["network", "create", networkName]);
+      // Explicit /24s avoid Docker's large automatic subnets and continue working when its default pools are exhausted.
+      await createProjectRuntimeNetwork(service, networkName, runDocker);
     } catch (error) {
       if (!isDockerAlreadyExistsError(error)) {
         throw error;

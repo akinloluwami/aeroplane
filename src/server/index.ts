@@ -28,6 +28,7 @@ import { envExampleVariableSuggestions } from "./env-example-suggestions.js";
 import { resolveServiceEnv } from "./variable-resolver.js";
 import { getRailwayProjects, getRailwayProjectDetails, importRailwayProject } from "./railway-importer.js";
 import { startRailwayImportAutomation } from "./railway-import-automation.js";
+import { removeProjectRuntimeNetwork } from "./runtime-network.js";
 import { getVercelTeams, getVercelProjects, getVercelProjectDetails, importVercelProject } from "./vercel-importer.js";
 import {
   createDefaultProjectEnvironments,
@@ -3123,6 +3124,7 @@ app.delete("/api/projects/:projectId", async (c) => {
     db.delete(services).where(eq(services.id, service.id)).run();
   }
 
+  await removeProjectRuntimeNetwork(project.id);
   db.delete(projectGroups).where(eq(projectGroups.id, project.id)).run();
   const caddy = await writeAndReloadCaddy();
   return c.json({ ok: true, caddy });
