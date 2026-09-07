@@ -111,7 +111,7 @@ export function TransferServiceModal({
         </div>
 
         <div className="border border-white/10 bg-white/[0.02] px-3 py-2.5 text-xs leading-5 text-zinc-500">
-          Deployments, variables, domains, backups, and runtime state stay with the service.
+          The service lands in the destination project's production environment. Deployments, variables, domains, backups, and runtime state stay with it.
         </div>
 
         {error ? <div className="border border-rose-500/30 bg-rose-500/10 px-3 py-2.5 text-xs text-rose-200">{error}</div> : null}

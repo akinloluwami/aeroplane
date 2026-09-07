@@ -1,6 +1,6 @@
 import {
-  ArrowRight02Icon,
   CloudServerIcon,
+  DragDropVerticalIcon,
   FolderOpenIcon,
   FunctionIcon,
   GitBranchIcon,
@@ -8,11 +8,13 @@ import {
   Globe02Icon,
   PackageIcon
 } from "@hugeicons/core-free-icons";
-import type { Service } from "../../api";
+import type { ProjectEnvironment, Service } from "../../api";
+import type { DragEvent } from "react";
 import { AppIcon, FrameworkMark } from "../../components/ui/primitives";
 import { formatTime } from "../../lib/format";
 import { dockerImageForService, isDatabaseService, isDockerImageService } from "../../../shared/service-source";
 import { functionRuntimeLabels, isFunctionService } from "../../../shared/service-functions";
+import { ServiceCardActions } from "./service-card-actions";
 
 function statusTone(status: string) {
   if (status === "active" || status === "running") {
@@ -32,9 +34,21 @@ function statusTone(status: string) {
 
 export function ProjectServiceCard({
   service,
+  environment,
+  isDragging,
+  canMoveEnvironment,
+  onDragStart,
+  onDragEnd,
+  onMoveEnvironment,
   onOpen
 }: {
   service: Service;
+  environment: ProjectEnvironment;
+  isDragging: boolean;
+  canMoveEnvironment: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onMoveEnvironment: () => void;
   onOpen: () => void;
 }) {
   const isDatabase = isDatabaseService(service);
@@ -68,8 +82,19 @@ export function ProjectServiceCard({
     <article
       role="button"
       tabIndex={0}
-      className="group flex min-h-52 cursor-pointer flex-col border border-white/10 bg-black p-4 text-left transition hover:border-white/30 hover:bg-white/[0.025]"
+      draggable={canMoveEnvironment}
+      className={`group relative flex min-h-52 flex-col border bg-black p-4 text-left transition-all ${
+        isDragging
+          ? "scale-[0.98] cursor-grabbing border-cyan-300/70 opacity-35 shadow-[0_0_36px_rgba(103,232,249,0.16)]"
+          : "cursor-grab border-white/10 hover:border-white/30 hover:bg-white/[0.025] active:cursor-grabbing"
+      }`}
       onClick={onOpen}
+      onDragStart={(event: DragEvent<HTMLElement>) => {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", service.id);
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
@@ -77,6 +102,11 @@ export function ProjectServiceCard({
         }
       }}
     >
+      {canMoveEnvironment ? (
+        <span className="pointer-events-none absolute left-1/2 top-1 -translate-x-1/2 text-zinc-700 opacity-0 transition group-hover:opacity-100" aria-hidden="true">
+          <AppIcon icon={DragDropVerticalIcon} size={14} />
+        </span>
+      ) : null}
       <div className="flex items-start gap-3">
         <div className="grid h-10 w-10 shrink-0 place-items-center border border-white/15 bg-white/[0.03] p-2.5">
           <FrameworkMark
@@ -141,9 +171,15 @@ export function ProjectServiceCard({
             {formatTime(service.lastDeployedAt ?? service.updatedAt)}
           </p>
         </div>
-        <span className="grid h-8 w-8 shrink-0 place-items-center border border-white/10 text-zinc-600 transition group-hover:border-white group-hover:bg-white group-hover:text-black">
-          <AppIcon icon={ArrowRight02Icon} size={14} />
-        </span>
+        <ServiceCardActions
+          serviceName={service.name}
+          environment={environment}
+          canVisit={Boolean(visibleUrl)}
+          canMoveEnvironment={canMoveEnvironment}
+          onOpen={onOpen}
+          onVisit={() => window.open(visibleUrl, "_blank", "noopener,noreferrer")}
+          onMoveEnvironment={onMoveEnvironment}
+        />
       </div>
     </article>
   );

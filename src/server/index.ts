@@ -29,6 +29,13 @@ import { resolveServiceEnv } from "./variable-resolver.js";
 import { getRailwayProjects, getRailwayProjectDetails, importRailwayProject } from "./railway-importer.js";
 import { startRailwayImportAutomation } from "./railway-import-automation.js";
 import { getVercelTeams, getVercelProjects, getVercelProjectDetails, importVercelProject } from "./vercel-importer.js";
+import {
+  createDefaultProjectEnvironments,
+  createProjectEnvironment,
+  getDefaultProjectEnvironment,
+  getProjectEnvironment,
+  getProjectEnvironments
+} from "./project-environments.js";
 import { buildGitHubAppManifest, convertGitHubManifestCode, githubConnectionStatus, listConnectedRepos, listRepoBranches, listRepoDirectories, repoUrlFromFullName } from "./github-connect.js";
 import { branchFromGitRef, verifyGitHubSignature } from "./github.js";
 import { rateLimit } from "./rate-limit.js";
@@ -294,6 +301,10 @@ const updateProjectSchema = z.object({
   description: optionalString.nullish()
 });
 
+const createProjectEnvironmentSchema = z.object({
+  name: z.string().trim().min(1).max(50)
+});
+
 const envSchema = z.object({ key: z.string().trim().regex(/^[A-Z_][A-Z0-9_]*$/i), value: z.string() });
 const databaseRowValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 const databaseRowSchema = z.record(z.string(), databaseRowValueSchema);
@@ -452,6 +463,7 @@ const restartOnboardingSchema = setupSchema.pick({
 
 const createServiceSchema = serviceSettingsSchema.extend({
   name: z.string().trim().min(1),
+  environmentId: z.string().trim().min(1).optional(),
   env: z.array(envSchema).optional().default([])
 }).superRefine((value, ctx) => {
   const isFunction = value.repoUrl === FUNCTION_REPO_URL || value.repoFullName?.startsWith("function:");
@@ -535,6 +547,10 @@ const functionCodeGenerationRequestSchema = z.object({
 });
 const transferServiceSchema = z.object({
   targetProjectId: z.string().trim().min(1)
+});
+
+const moveServiceEnvironmentSchema = z.object({
+  environmentId: z.string().trim().min(1)
 });
 
 function parseDatabaseFilters(raw: string | undefined): DatabaseRowFilter[] {
@@ -834,6 +850,7 @@ async function publicService(service: Service, options: PublicServiceOptions = {
   return {
     id: service.id,
     projectId: service.projectId,
+    environmentId: service.environmentId,
     name: service.name,
     slug: service.slug,
     repoFullName: service.repoFullName,
@@ -891,11 +908,12 @@ async function summarizeProject(project: ProjectGroup, projectServices: Service[
     status,
     serviceCount: projectServices.length,
     lastUpdatedAt,
+    environments: getProjectEnvironments(project.id),
     services: hydratedServices
   };
 }
 
-function createServiceRecord(projectId: string, input: z.infer<typeof createServiceSchema>) {
+function createServiceRecord(projectId: string, environmentId: string, input: z.infer<typeof createServiceSchema>) {
   const timestamp = nowIso();
   const serviceSlug = createUniqueSlug(input.name, getServiceSlugSet(projectId));
   const inputFunctionRuntime = input.functionRuntime ?? functionRuntimeForService({ repoFullName: input.repoFullName ?? null, repoUrl: input.repoUrl ?? "" });
@@ -920,6 +938,7 @@ function createServiceRecord(projectId: string, input: z.infer<typeof createServ
   const service: Service = {
     id: nanoid(10),
     projectId,
+    environmentId,
     slug: serviceSlug,
     name: input.name,
     repoFullName,
@@ -2192,6 +2211,7 @@ app.post("/api/projects", async (c) => {
   };
 
   db.insert(projectGroups).values(project).run();
+  createDefaultProjectEnvironments(project.id, timestamp);
   return c.json({ project: await summarizeProject(project, []) }, 201);
 });
 
@@ -2232,6 +2252,31 @@ app.patch("/api/projects/:projectId", async (c) => {
     .run();
 
   return c.json({ project: await summarizeProject(updated, getServicesForProject(project.id)) });
+});
+
+app.post("/api/projects/:projectId/environments", async (c) => {
+  const project = getProjectById(c.req.param("projectId"));
+  if (!project) {
+    return jsonError("Project not found", 404);
+  }
+  const denied = requireProjectAccess(c, project.id);
+  if (denied) return denied;
+
+  const body = createProjectEnvironmentSchema.safeParse(await c.req.json());
+  if (!body.success) {
+    return jsonError(body.error.issues[0]?.message ?? "Invalid environment");
+  }
+
+  const duplicate = getProjectEnvironments(project.id).find(
+    (environment) => environment.name.toLocaleLowerCase() === body.data.name.toLocaleLowerCase()
+  );
+  if (duplicate) {
+    return jsonError("An environment with this name already exists.", 409);
+  }
+
+  const environment = createProjectEnvironment(project.id, body.data.name);
+  db.update(projectGroups).set({ updatedAt: nowIso() }).where(eq(projectGroups.id, project.id)).run();
+  return c.json({ environment }, 201);
 });
 
 app.get("/api/projects/:projectId/database-variable-suggestions", async (c) => {
@@ -2286,7 +2331,14 @@ app.post("/api/projects/:projectId/services", async (c) => {
     return jsonError(body.error.issues[0]?.message ?? "Invalid service");
   }
 
-  const service = createServiceRecord(project.id, body.data);
+  const environment = body.data.environmentId
+    ? getProjectEnvironment(project.id, body.data.environmentId)
+    : getDefaultProjectEnvironment(project.id);
+  if (!environment) {
+    return jsonError(body.data.environmentId ? "Environment not found" : "Project has no default environment", 404);
+  }
+
+  const service = createServiceRecord(project.id, environment.id, body.data);
   db.update(projectGroups).set({ updatedAt: nowIso() }).where(eq(projectGroups.id, project.id)).run();
   await writeAndReloadCaddy();
   return c.json({ service: await publicService(service) }, 201);
@@ -2966,10 +3018,15 @@ app.post("/api/services/:serviceId/transfer", async (c) => {
   const targetSlugs = getServiceSlugSet(targetProject.id);
   const nextSlug = targetSlugs.has(service.slug) ? createUniqueSlug(service.name, targetSlugs) : service.slug;
   const sourceProjectId = service.projectId;
+  const targetEnvironment = getDefaultProjectEnvironment(targetProject.id);
+  if (!targetEnvironment) {
+    return jsonError("Target project has no default environment", 409);
+  }
 
   db.update(services)
     .set({
       projectId: targetProject.id,
+      environmentId: targetEnvironment.id,
       slug: nextSlug,
       updatedAt: timestamp
     })
@@ -2994,6 +3051,32 @@ app.post("/api/services/:serviceId/transfer", async (c) => {
     project: await summarizeProject(updatedTargetProject, getServicesForProject(updatedTargetProject.id)),
     caddy
   });
+});
+
+app.patch("/api/services/:serviceId/environment", async (c) => {
+  const serviceAccess = getAuthorizedService(c);
+  if (serviceAccess.response) return serviceAccess.response;
+  const { service } = serviceAccess;
+
+  const body = moveServiceEnvironmentSchema.safeParse(await c.req.json());
+  if (!body.success) {
+    return jsonError(body.error.issues[0]?.message ?? "Invalid environment");
+  }
+
+  const environment = getProjectEnvironment(service.projectId, body.data.environmentId);
+  if (!environment) {
+    return jsonError("Environment not found in this project", 404);
+  }
+
+  const timestamp = nowIso();
+  db.update(services)
+    .set({ environmentId: environment.id, updatedAt: timestamp })
+    .where(eq(services.id, service.id))
+    .run();
+  db.update(projectGroups).set({ updatedAt: timestamp }).where(eq(projectGroups.id, service.projectId)).run();
+
+  const updated = getServiceById(service.id);
+  return c.json({ service: updated ? await publicService(updated) : null });
 });
 
 app.delete("/api/services/:serviceId", async (c) => {

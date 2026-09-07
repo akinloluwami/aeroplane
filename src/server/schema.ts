@@ -10,9 +10,20 @@ export const projectGroups = sqliteTable("project_groups", {
   updatedAt: text("updated_at").notNull()
 });
 
+export const projectEnvironments = sqliteTable("project_environments", {
+  id: text("id").primaryKey(),
+  projectId: text("project_group_id").notNull(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  isDefault: integer("is_default", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull()
+});
+
 export const services = sqliteTable("projects", {
   id: text("id").primaryKey(),
   projectId: text("project_group_id").notNull(),
+  environmentId: text("environment_id").notNull(),
   slug: text("slug").notNull(),
   name: text("name").notNull(),
   repoFullName: text("repo_full_name"),
@@ -193,6 +204,7 @@ export const apiKeyProjectScopes = sqliteTable("api_key_project_scopes", {
 });
 
 export type ProjectGroup = typeof projectGroups.$inferSelect;
+export type ProjectEnvironment = typeof projectEnvironments.$inferSelect;
 export type Service = typeof services.$inferSelect;
 export type Deployment = typeof deployments.$inferSelect;
 export type NewDeployment = typeof deployments.$inferInsert;
