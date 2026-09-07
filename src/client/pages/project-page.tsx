@@ -40,6 +40,8 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
   const [createServiceOpen, setCreateServiceOpen] = useState(false);
   const [createEnvironmentOpen, setCreateEnvironmentOpen] = useState(false);
   const [movingService, setMovingService] = useState<Service | null>(null);
+  const [draggingService, setDraggingService] = useState<Service | null>(null);
+  const [movingEnvironmentId, setMovingEnvironmentId] = useState("");
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState("");
   const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
   const [deletingProject, setDeletingProject] = useState(false);
@@ -88,6 +90,8 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
     setProjects([]);
     setServiceSearch("");
     setSelectedEnvironmentId("");
+    setDraggingService(null);
+    setMovingEnvironmentId("");
     setLoading(true);
     void loadProject();
   }, [loadProject, projectSlug]);
@@ -198,6 +202,28 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
     await api.moveServiceToEnvironment(movingService.id, { environmentId });
     setMovingService(null);
     await loadProject();
+  }
+
+  async function dropServiceIntoEnvironment(environmentId: string) {
+    if (!currentProject || !draggingService || draggingService.environmentId === environmentId) return;
+
+    const serviceId = draggingService.id;
+    setMovingEnvironmentId(environmentId);
+    setDraggingService(null);
+    setProject((current) => current ? {
+      ...current,
+      services: current.services.map((service) => service.id === serviceId ? { ...service, environmentId } : service)
+    } : current);
+
+    try {
+      await api.moveServiceToEnvironment(serviceId, { environmentId });
+      await loadProject();
+    } catch (issue) {
+      setError(issue instanceof Error ? issue.message : "Could not move service");
+      await loadProject();
+    } finally {
+      setMovingEnvironmentId("");
+    }
   }
 
   function navigateToProjects() {
@@ -337,8 +363,11 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
                           environments={currentProject.environments}
                           services={currentProject.services}
                           selectedEnvironmentId={selectedEnvironment.id}
+                          draggingService={draggingService}
+                          movingEnvironmentId={movingEnvironmentId}
                           onSelect={setSelectedEnvironmentId}
                           onCreate={() => setCreateEnvironmentOpen(true)}
+                          onDropService={(environmentId) => void dropServiceIntoEnvironment(environmentId)}
                         />
 
                         {environmentServices.length === 0 ? (
@@ -378,7 +407,10 @@ export function ProjectPage({ projectSlug }: { projectSlug: string }) {
                                     key={service.id}
                                     service={service}
                                     environment={selectedEnvironment}
+                                    isDragging={draggingService?.id === service.id}
                                     canMoveEnvironment={currentProject.environments.length > 1}
+                                    onDragStart={() => setDraggingService(service)}
+                                    onDragEnd={() => setDraggingService(null)}
                                     onMoveEnvironment={() => setMovingService(service)}
                                     onOpen={() => navigateToServiceOverview(service.slug)}
                                   />
