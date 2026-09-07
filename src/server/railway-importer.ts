@@ -14,6 +14,7 @@ import { getSystemSettings } from "./system-settings.js";
 import { fetchRailwayGraphQL } from "./railway-graphql.js";
 import { getRailwayServiceDomainInfo, importRailwayCustomDomains, railwayServiceTargetPort, type RailwayServiceDomainInfo } from "./railway-custom-domains.js";
 import { DOCKER_IMAGE_REPO_URL, dockerImageRepoFullName, validateDockerImageReference } from "../shared/service-source.js";
+import { createDefaultProjectEnvironments } from "./project-environments.js";
 
 type GraphQLTypeRef = {
   kind?: string | null;
@@ -573,6 +574,7 @@ ${serviceInstanceCommandSelection}
     createdAt: timestamp,
     updatedAt: timestamp
   }).run();
+  const { defaultEnvironment } = createDefaultProjectEnvironments(projectGroupId, timestamp);
 
   for (const edge of servicesEdges) {
     const sNode = edge.node;
@@ -688,6 +690,7 @@ ${serviceInstanceCommandSelection}
     db.insert(services).values({
       id: targetServiceId,
       projectId: projectGroupId,
+      environmentId: defaultEnvironment.id,
       slug: serviceSlug,
       name: serviceName,
       repoFullName: repoFullName || null,
